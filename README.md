@@ -62,7 +62,7 @@ The database will be created automatically on first access!
 
 ### First-Time Login
 ```
-Username: admin
+Email: admin@rolodrawer.local
 Password: RoloDrawer2026!
 ```
 
@@ -118,4 +118,4 @@ This project is licensed under the GNU GPLv3 - see the [LICENSE](LICENSE) file f
 
 ---
 
-**Version**: 1.0.1 | **Last Updated**: January 2026
+**Version**: 1.0.2 | **Last Updated**: January 2026

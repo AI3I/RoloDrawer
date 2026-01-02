@@ -66,6 +66,17 @@ class Database
         return $this->pdo->lastInsertId();
     }
 
+    public function isInitialized()
+    {
+        try {
+            // Check if the users table exists by querying it
+            $result = $this->pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
+            return $result->fetch() !== false;
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
     public function initializeDatabase()
     {
         $schemaPath = dirname(__DIR__, 2) . '/storage/database/schema.sql';

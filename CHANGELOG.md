@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.2] - 2026-01-02
+
+### Fixed
+- **CRITICAL**: Fixed database initialization race condition that prevented automatic database creation on first install
+  - Added `isInitialized()` method to Database class to properly check if database has been set up
+  - Updated index.php to use table existence check instead of file existence check
+  - Resolves 500 error "no such table: tags" on fresh installations
+  - Database now correctly initializes on first access as documented in README
+- **CRITICAL**: Fixed default admin login credentials
+  - Changed default admin username from 'admin' to 'admin@rolodrawer.local' (valid email format required by login form)
+  - Updated schema.sql, README.md, and test_installation.php with correct email address
+  - Password remains: RoloDrawer2026!
+
+### Technical Details
+The previous implementation checked if the database file existed before initializing, but PDO automatically creates an empty SQLite file when connecting. This meant the initialization check always failed, leaving users with an empty database file and 500 errors. The fix checks for the existence of database tables instead of the database file.
+
+Additionally, the login form requires a valid email address, but the default admin user was created with username 'admin' instead of a proper email, preventing login with documented credentials.
+
+---
+
 ## [1.0.1] - 2026-01-02
 
 ### Added

@@ -767,8 +767,8 @@ define('ENABLE_CUSTOM_FIELDS', true);
  * Current RoloDrawer version
  * Updated automatically during upgrades
  */
-define('ROLODRAWER_VERSION', '1.0.0');
-define('ROLODRAWER_DB_VERSION', '1.0.0');
+define('ROLODRAWER_VERSION', '1.0.2');
+define('ROLODRAWER_DB_VERSION', '1.0.2');
 
 /**
  * Application Paths

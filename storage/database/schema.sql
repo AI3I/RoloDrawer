@@ -171,10 +171,10 @@ CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_session ON user_sessions(session_id);
 
 -- Insert default admin user
--- Username: admin
+-- Email: admin@rolodrawer.local
 -- Password: RoloDrawer2026!
 INSERT INTO users (id, email, password, name, role, status) VALUES
-(1, 'admin', '$2y$10$vX8mJxGqYQFKmZKzqhHKJeK5xN.6YqWF8OQ0mLgxZ5NJY7RxMZhPC', 'System Administrator', 'admin', 'active');
+(1, 'admin@rolodrawer.local', '$2y$10$vX8mJxGqYQFKmZKzqhHKJeK5xN.6YqWF8OQ0mLgxZ5NJY7RxMZhPC', 'System Administrator', 'admin', 'active');
 
 -- Insert some default tags (optional - can be commented out for completely empty database)
 INSERT INTO tags (id, name, color) VALUES

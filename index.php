@@ -64,8 +64,10 @@ spl_autoload_register(function ($class) {
 use RoloDrawer\Database\Database;
 
 $db = Database::getInstance();
-$dbFile = __DIR__ . '/storage/database/rolodrawer.sqlite';
-if (!file_exists($dbFile)) $db->initializeDatabase();
+// Initialize database if not already initialized
+if (!$db->isInitialized()) {
+    $db->initializeDatabase();
+}
 
 $page = $_GET['page'] ?? 'dashboard';
 $action = $_GET['action'] ?? 'index';

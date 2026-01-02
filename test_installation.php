@@ -1,7 +1,7 @@
 <?php
 /**
  * RoloDrawer Installation Test Script
- * Version: 1.0.1
+ * Version: 1.0.2
  *
  * This script tests your RoloDrawer installation to ensure everything is configured correctly.
  * Run this from your browser: http://yourdomain.com/rolodrawer/test_installation.php
@@ -10,7 +10,7 @@
 header('Content-Type: text/plain; charset=utf-8');
 
 echo "╔════════════════════════════════════════════════════════════════╗\n";
-echo "║         RoloDrawer Installation Test - Version 1.0.1          ║\n";
+echo "║         RoloDrawer Installation Test - Version 1.0.2          ║\n";
 echo "╚════════════════════════════════════════════════════════════════╝\n\n";
 
 $errors = 0;
@@ -191,7 +191,7 @@ if ($errors > 0) {
     echo "\nNext steps:\n";
     echo "1. Delete this test file (test_installation.php)\n";
     echo "2. Access RoloDrawer: $base_url/\n";
-    echo "3. Login with: admin / RoloDrawer2026!\n";
+    echo "3. Login with: admin@rolodrawer.local / RoloDrawer2026!\n";
     echo "4. Change your password immediately!\n";
 }
 
