@@ -2820,15 +2820,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             <h2 class="text-3xl font-bold">File #<?= htmlspecialchars($file['display_number']) ?></h2>
                             <div class="flex gap-2">
                                 <a href="?page=files&action=edit&id=<?= $file['id'] ?>" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Edit</a>
-                                <?php if (!$file['is_archived'] && !$file['is_destroyed'] && in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
-                                    <button onclick="openArchiveModal(<?= $file['id'] ?>, '<?= htmlspecialchars($file['display_number'], ENT_QUOTES) ?>')"
-                                            class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 font-medium flex items-center gap-2">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
-                                        </svg>
-                                        Archive
-                                    </button>
-                                <?php endif; ?>
                                 <a href="?page=files" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">Back to List</a>
                             </div>
                         </div>
@@ -3452,6 +3443,28 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         <?php endif; ?>
                             </div>
                         </div>
+
+                        <!-- ARCHIVE FILE SECTION -->
+                        <?php if (empty($file['is_archived']) && empty($file['is_destroyed']) && in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
+                            <div class="bg-white rounded-lg shadow p-6 mb-6">
+                                <h3 class="font-bold text-lg mb-4 text-yellow-700">Archive File</h3>
+                                <p class="text-sm text-gray-600 mb-4">
+                                    Archiving a file removes it from active file listings but preserves all data for future reference.
+                                    Archived files can be restored by administrators if needed.
+                                </p>
+                                <form method="POST" action="?page=files&action=archive&id=<?= $file['id'] ?>" onsubmit="return confirm('Are you sure you want to archive this file?');">
+                                    <div class="mb-4">
+                                        <label class="block text-gray-700 mb-2 font-medium">Archive Reason (Required) *</label>
+                                        <textarea name="archived_reason" required rows="4"
+                                                  placeholder="Example: Project completed, Retention period expired, Superseded by newer version, etc."
+                                                  class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-yellow-500"></textarea>
+                                    </div>
+                                    <button type="submit" class="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700 font-medium">
+                                        Archive This File
+                                    </button>
+                                </form>
+                            </div>
+                        <?php endif; ?>
 
                         <!-- FILE HISTORY (Checkout + Movement) - Full Width at Bottom -->
                         <?php
