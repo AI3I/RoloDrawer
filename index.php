@@ -3088,13 +3088,34 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     </div>
                                     <div class="mb-4">
                                         <label class="block text-gray-700 mb-2">Notes (optional)</label>
-                                        <textarea name="notes" rows="3" placeholder="Reason for checkout, special handling instructions, etc."
+                                        <textarea name="notes" rows="2" placeholder="Reason for checkout, special handling instructions, etc."
                                                   class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                                     </div>
                                     <button type="submit" class="bg-orange-600 text-white px-6 py-2 rounded hover:bg-orange-700 flex items-center gap-2">
                                         <span>Check Out File</span>
                                     </button>
                                 </form>
+
+                                <?php if (empty($file['is_archived']) && in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
+                                    <!-- Archive Section within same box -->
+                                    <div class="mt-6 pt-6 border-t border-gray-200">
+                                        <h4 class="font-bold text-md mb-2 text-yellow-700">Archive File</h4>
+                                        <p class="text-xs text-gray-600 mb-3">
+                                            Remove from active listings while preserving all data.
+                                        </p>
+                                        <form method="POST" action="?page=files&action=archive&id=<?= $file['id'] ?>" onsubmit="return confirm('Are you sure you want to archive this file?');">
+                                            <div class="mb-3">
+                                                <label class="block text-gray-700 mb-2 text-sm font-medium">Archive Reason (Required)</label>
+                                                <textarea name="archived_reason" required rows="2"
+                                                          placeholder="e.g., Project completed, Retention period expired, etc."
+                                                          class="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"></textarea>
+                                            </div>
+                                            <button type="submit" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 text-sm font-medium">
+                                                Archive This File
+                                            </button>
+                                        </form>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         <?php else: ?>
                             <!-- File is checked out - show status and checkin option -->
@@ -3443,28 +3464,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         <?php endif; ?>
                             </div>
                         </div>
-
-                        <!-- ARCHIVE FILE SECTION -->
-                        <?php if (empty($file['is_archived']) && empty($file['is_destroyed']) && in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
-                            <div class="bg-white rounded-lg shadow p-6 mb-6">
-                                <h3 class="font-bold text-lg mb-4 text-yellow-700">Archive File</h3>
-                                <p class="text-sm text-gray-600 mb-4">
-                                    Archiving a file removes it from active file listings but preserves all data for future reference.
-                                    Archived files can be restored by administrators if needed.
-                                </p>
-                                <form method="POST" action="?page=files&action=archive&id=<?= $file['id'] ?>" onsubmit="return confirm('Are you sure you want to archive this file?');">
-                                    <div class="mb-4">
-                                        <label class="block text-gray-700 mb-2 font-medium">Archive Reason (Required) *</label>
-                                        <textarea name="archived_reason" required rows="4"
-                                                  placeholder="Example: Project completed, Retention period expired, Superseded by newer version, etc."
-                                                  class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-yellow-500"></textarea>
-                                    </div>
-                                    <button type="submit" class="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700 font-medium">
-                                        Archive This File
-                                    </button>
-                                </form>
-                            </div>
-                        <?php endif; ?>
 
                         <!-- FILE HISTORY (Checkout + Movement) - Full Width at Bottom -->
                         <?php
