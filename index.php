@@ -52,6 +52,18 @@ function daysOverdue($expectedReturnDate) {
     return max(0, $days);
 }
 
+// Helper function for relative time display
+function timeAgo($datetime) {
+    $timestamp = strtotime($datetime);
+    $diff = time() - $timestamp;
+
+    if ($diff < 60) return 'just now';
+    if ($diff < 3600) return floor($diff / 60) . ' min ago';
+    if ($diff < 86400) return floor($diff / 3600) . ' hours ago';
+    if ($diff < 604800) return floor($diff / 86400) . ' days ago';
+    return date('M j, Y', $timestamp);
+}
+
 // Helper function to generate QR Code URL
 function generateQRCodeURL($data, $size = 200) {
     return "https://api.qrserver.com/v1/create-qr-code/?size={$size}x{$size}&data=" . urlencode($data);
@@ -1181,8 +1193,18 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
 <?php else: ?>
     <!-- Main App -->
     <div class="flex h-screen">
+        <!-- Mobile Menu Button -->
+        <button id="mobileMenuBtn" class="md:hidden fixed top-4 left-4 z-50 bg-gray-800 text-white p-2 rounded-lg shadow-lg hover:bg-gray-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+        </button>
+
+        <!-- Mobile Overlay -->
+        <div id="mobileOverlay" class="hidden md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"></div>
+
         <!-- Sidebar -->
-        <div class="w-64 bg-gray-800 text-white flex-shrink-0">
+        <div id="sidebar" class="w-64 bg-gray-800 text-white flex-shrink-0 fixed md:relative h-full z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300">
             <div class="p-4">
                 <h1 class="text-2xl font-bold flex items-center gap-2">
                     <span class="text-3xl">🗂️</span>
@@ -1266,6 +1288,67 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     </div>
                 <?php endif; ?>
 
+                <!-- Breadcrumb Navigation -->
+                <?php if ($page !== 'dashboard'): ?>
+                    <nav class="flex items-center text-sm text-gray-600 mb-4">
+                        <a href="?page=dashboard" class="hover:text-blue-600">🏠 Home</a>
+                        <span class="mx-2">›</span>
+                        <?php if ($page === 'files'): ?>
+                            <?php if ($action === 'view' && $id): ?>
+                                <a href="?page=files" class="hover:text-blue-600">Files</a>
+                                <span class="mx-2">›</span>
+                                <span class="text-gray-900 font-medium">File #<?= htmlspecialchars($file['display_number'] ?? $id) ?></span>
+                            <?php elseif ($action === 'edit' && $id): ?>
+                                <a href="?page=files" class="hover:text-blue-600">Files</a>
+                                <span class="mx-2">›</span>
+                                <a href="?page=files&action=view&id=<?= $id ?>" class="hover:text-blue-600">File #<?= htmlspecialchars($file['display_number'] ?? $id) ?></a>
+                                <span class="mx-2">›</span>
+                                <span class="text-gray-900 font-medium">Edit</span>
+                            <?php elseif ($action === 'create'): ?>
+                                <a href="?page=files" class="hover:text-blue-600">Files</a>
+                                <span class="mx-2">›</span>
+                                <span class="text-gray-900 font-medium">Create New File</span>
+                            <?php else: ?>
+                                <span class="text-gray-900 font-medium">Files</span>
+                            <?php endif; ?>
+                        <?php elseif ($page === 'search'): ?>
+                            <span class="text-gray-900 font-medium">Search</span>
+                        <?php elseif ($page === 'lookup'): ?>
+                            <span class="text-gray-900 font-medium">QR Lookup</span>
+                        <?php elseif ($page === 'labels'): ?>
+                            <span class="text-gray-900 font-medium">Print Labels</span>
+                        <?php elseif ($page === 'my-checkouts'): ?>
+                            <span class="text-gray-900 font-medium">My Checkouts</span>
+                        <?php elseif ($page === 'archived'): ?>
+                            <span class="text-gray-900 font-medium">Archive</span>
+                        <?php elseif ($page === 'entities'): ?>
+                            <?php if ($action === 'edit' && $id): ?>
+                                <a href="?page=entities" class="hover:text-blue-600">Entities</a>
+                                <span class="mx-2">›</span>
+                                <span class="text-gray-900 font-medium">Edit Entity</span>
+                            <?php else: ?>
+                                <span class="text-gray-900 font-medium">Entities</span>
+                            <?php endif; ?>
+                        <?php elseif ($page === 'storage'): ?>
+                            <span class="text-gray-900 font-medium">File Storage</span>
+                        <?php elseif ($page === 'tags'): ?>
+                            <span class="text-gray-900 font-medium">Tags</span>
+                        <?php elseif ($page === 'checkouts'): ?>
+                            <span class="text-gray-900 font-medium">All Checkouts</span>
+                        <?php elseif ($page === 'movements'): ?>
+                            <span class="text-gray-900 font-medium">Movements</span>
+                        <?php elseif ($page === 'destroyed'): ?>
+                            <span class="text-gray-900 font-medium">Destroyed Files</span>
+                        <?php elseif ($page === 'reports'): ?>
+                            <span class="text-gray-900 font-medium">Reports</span>
+                        <?php elseif ($page === 'users'): ?>
+                            <span class="text-gray-900 font-medium">Users</span>
+                        <?php else: ?>
+                            <span class="text-gray-900 font-medium"><?= ucfirst($page) ?></span>
+                        <?php endif; ?>
+                    </nav>
+                <?php endif; ?>
+
                 <?php if ($page === 'dashboard'): ?>
                     <!-- Dashboard -->
                     <div class="flex justify-between items-center mb-6">
@@ -1290,6 +1373,26 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
 
                     $recentCheckouts = $db->fetchAll("SELECT f.*, u.name as checked_out_to FROM files f LEFT JOIN users u ON f.checked_out_by = u.id WHERE f.is_checked_out = 1 ORDER BY f.checked_out_at DESC LIMIT 5");
                     $topTags = $db->fetchAll("SELECT t.name, t.color, COUNT(ft.file_id) as usage FROM tags t LEFT JOIN file_tags ft ON t.id = ft.tag_id GROUP BY t.id ORDER BY usage DESC LIMIT 5");
+
+                    // Recent Activity Feed - combines file additions, movements, and checkouts
+                    $recentFiles = $db->fetchAll("SELECT id, display_number, name, created_at as activity_time, 'created' as activity_type FROM files ORDER BY created_at DESC LIMIT 10");
+                    $recentMovements = $db->fetchAll("
+                        SELECT fm.moved_at as activity_time, 'moved' as activity_type, f.id, f.display_number, f.name,
+                               u.name as moved_by_name, l_to.name as to_location, c_to.label as to_cabinet
+                        FROM file_movements fm
+                        LEFT JOIN files f ON fm.file_id = f.id
+                        LEFT JOIN users u ON fm.moved_by = u.id
+                        LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
+                        LEFT JOIN locations l_to ON c_to.location_id = l_to.id
+                        ORDER BY fm.moved_at DESC LIMIT 10
+                    ");
+
+                    // Combine and sort all activities
+                    $allActivity = array_merge($recentFiles, $recentMovements);
+                    usort($allActivity, function($a, $b) {
+                        return strtotime($b['activity_time']) - strtotime($a['activity_time']);
+                    });
+                    $recentActivity = array_slice($allActivity, 0, 8);
                     ?>
 
                     <!-- Main Stats Grid -->
@@ -1432,32 +1535,33 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
 
                     <!-- Two Column Layout for Recent Activity -->
                     <div class="grid grid-cols-2 gap-6 mb-8">
-                        <!-- Recent Checkouts -->
-                        <?php if (!empty($recentCheckouts)): ?>
+                        <!-- Recent Activity Feed -->
+                        <?php if (!empty($recentActivity)): ?>
                             <div class="bg-white rounded-lg shadow p-6">
                                 <div class="flex justify-between items-center mb-4">
                                     <h3 class="text-xl font-bold flex items-center gap-2">
-                                        <span class="text-2xl">📤</span> Recent Checkouts
+                                        <span class="text-2xl">📋</span> Recent Activity
                                     </h3>
-                                    <a href="?page=reports&report=checkouts" class="text-blue-600 hover:underline text-sm">View All</a>
                                 </div>
-                                <div class="space-y-2">
-                                    <?php foreach ($recentCheckouts as $c): ?>
-                                        <div class="flex items-start gap-3 p-3 hover:bg-gray-50 rounded border-l-4 <?= isOverdue($c['expected_return_date']) ? 'border-red-500 bg-red-50' : 'border-blue-500' ?>">
+                                <div class="space-y-3">
+                                    <?php foreach ($recentActivity as $activity): ?>
+                                        <div class="flex items-start gap-3 p-3 hover:bg-gray-50 rounded border-l-4 <?= $activity['activity_type'] === 'created' ? 'border-green-500' : 'border-blue-500' ?>">
+                                            <div class="text-2xl">
+                                                <?= $activity['activity_type'] === 'created' ? '➕' : '📦' ?>
+                                            </div>
                                             <div class="flex-1">
                                                 <div class="font-medium text-sm">
-                                                    <span class="font-mono text-gray-600">#<?= htmlspecialchars($c['display_number']) ?></span>
-                                                    <span class="ml-2"><?= htmlspecialchars($c['name']) ?></span>
+                                                    <span class="font-mono text-gray-600">#<?= htmlspecialchars($activity['display_number']) ?></span>
+                                                    <span class="ml-2"><?= htmlspecialchars($activity['name']) ?></span>
                                                 </div>
-                                                <div class="text-xs text-gray-600 mt-1">
-                                                    Checked out to: <span class="font-medium"><?= htmlspecialchars($c['checked_out_to']) ?></span>
-                                                </div>
-                                                <?php if ($c['expected_return_date']): ?>
-                                                    <div class="text-xs mt-1 <?= isOverdue($c['expected_return_date']) ? 'text-red-600 font-semibold' : 'text-gray-500' ?>">
-                                                        Due: <?= date('M j, Y', strtotime($c['expected_return_date'])) ?>
-                                                        <?php if (isOverdue($c['expected_return_date'])): ?>
-                                                            <span class="ml-1">(<?= daysOverdue($c['expected_return_date']) ?> days overdue)</span>
-                                                        <?php endif; ?>
+                                                <?php if ($activity['activity_type'] === 'created'): ?>
+                                                    <div class="text-xs text-gray-600 mt-1">
+                                                        <span class="text-green-600 font-medium">Created</span> <?= timeAgo($activity['activity_time']) ?>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div class="text-xs text-gray-600 mt-1">
+                                                        <span class="text-blue-600 font-medium">Moved</span> to <?= htmlspecialchars(($activity['to_location'] ?? 'Unknown') . ' > Cabinet ' . ($activity['to_cabinet'] ?? '?')) ?>
+                                                        <div class="text-gray-500">by <?= htmlspecialchars($activity['moved_by_name'] ?? 'Unknown') ?> <?= timeAgo($activity['activity_time']) ?></div>
                                                     </div>
                                                 <?php endif; ?>
                                             </div>
@@ -2565,8 +2669,8 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             ?>
                             <div class="grid grid-cols-2 gap-4 mb-6">
                                 <div>
-                                    <label class="block text-gray-700 mb-2">Assign to Location (optional)</label>
-                                    <select id="location_filter_create" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <label class="block text-gray-700 mb-2">Assign to Location *</label>
+                                    <select id="location_filter_create" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                         <option value="">Select a location...</option>
                                         <?php foreach ($locations as $loc): ?>
                                             <option value="<?= $loc['id'] ?>"><?= htmlspecialchars($loc['name']) ?></option>
@@ -2574,9 +2678,9 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-gray-700 mb-2">Assign to Cabinet (optional)</label>
-                                    <select name="cabinet_id" id="cabinet_select_create" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="">Not assigned</option>
+                                    <label class="block text-gray-700 mb-2">Assign to Cabinet *</label>
+                                    <select name="cabinet_id" id="cabinet_select_create" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="">Select a cabinet...</option>
                                         <?php foreach ($cabinets as $cabinet): ?>
                                             <option value="<?= $cabinet['id'] ?>" data-location="<?= $cabinet['location_id'] ?? '' ?>">
                                                 Cabinet <?= htmlspecialchars($cabinet['cabinet_label']) ?><?= $cabinet['location_name'] ? ' (' . htmlspecialchars($cabinet['location_name']) . ')' : '' ?>
@@ -5938,6 +6042,26 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
         </div>
     </div>
 <?php endif; ?>
+
+<script>
+// Mobile menu toggle
+const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+const sidebar = document.getElementById('sidebar');
+const mobileOverlay = document.getElementById('mobileOverlay');
+
+function toggleMobileMenu() {
+    sidebar.classList.toggle('-translate-x-full');
+    mobileOverlay.classList.toggle('hidden');
+}
+
+if (mobileMenuBtn) {
+    mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+}
+
+if (mobileOverlay) {
+    mobileOverlay.addEventListener('click', toggleMobileMenu);
+}
+</script>
 
 </body>
 </html>
