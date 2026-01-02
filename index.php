@@ -497,6 +497,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    if ($page === 'locations' && $action === 'delete' && $id) {
+        // Check if location has cabinets
+        $cabinetCount = $db->fetchOne("SELECT COUNT(*) as count FROM cabinets WHERE location_id = ?", [$id])['count'];
+
+        // Check if any files are in cabinets at this location
+        $fileCount = $db->fetchOne("SELECT COUNT(*) as count FROM files f JOIN cabinets c ON f.current_cabinet_id = c.id WHERE c.location_id = ?", [$id])['count'];
+
+        if (!empty($_POST['confirm_delete'])) {
+            // Disassociate all cabinets from this location
+            $db->query("UPDATE cabinets SET location_id = NULL WHERE location_id = ?", [$id]);
+
+            // Delete the location
+            $db->query("DELETE FROM locations WHERE id = ?", [$id]);
+
+            header("Location: ?page=locations&message=" . urlencode("Location deleted. $cabinetCount cabinet(s) and $fileCount file(s) were disassociated."));
+            exit;
+        } else {
+            $message = "Cannot delete location: Please confirm deletion. This will disassociate $cabinetCount cabinet(s) and $fileCount file(s).";
+            $messageType = "error";
+        }
+    }
+
     // CABINET OPERATIONS
     if ($page === 'cabinets' && $action === 'create') {
         $label = $_POST['label'] ?? '';
@@ -524,7 +546,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // DRAWER OPERATIONS
+    if ($page === 'cabinets' && $action === 'delete' && $id) {
+        // Check if cabinet has files
+        $fileCount = $db->fetchOne("SELECT COUNT(*) as count FROM files WHERE current_cabinet_id = ?", [$id])['count'];
+
+        if (!empty($_POST['confirm_delete'])) {
+            // Disassociate all files from this cabinet
+            $db->query("UPDATE files SET current_cabinet_id = NULL WHERE current_cabinet_id = ?", [$id]);
+
+            // Delete the cabinet
+            $db->query("DELETE FROM cabinets WHERE id = ?", [$id]);
+
+            header("Location: ?page=locations&message=" . urlencode("Cabinet deleted. $fileCount file(s) were disassociated."));
+            exit;
+        } else {
+            $message = "Cannot delete cabinet: Please confirm deletion. This will disassociate $fileCount file(s).";
+            $messageType = "error";
+        }
+    }
+
     // CHECKOUT HANDLER
     if ($page === 'files' && $action === 'checkout' && $id) {
         // Get the file to check if it's already checked out
@@ -1174,7 +1214,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     <span class="inline-block w-5">🏢</span> Entities
                 </a>
                 <a href="?page=locations" class="block px-4 py-2 <?= $page === 'locations' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
-                    <span class="inline-block w-5">📍</span> Locations
+                    <span class="inline-block w-5">📍</span> Locations & Cabinets
                 </a>
                 <a href="?page=tags" class="block px-4 py-2 <?= $page === 'tags' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
                     <span class="inline-block w-5">🏷️</span> Tags
@@ -1288,7 +1328,16 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     </div>
 
                     <!-- Secondary Stats Grid -->
-                    <div class="grid grid-cols-4 gap-4 mb-8">
+                    <div class="grid grid-cols-5 gap-4 mb-8">
+                        <div class="bg-white p-5 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-blue-500">
+                            <div class="flex items-center gap-3">
+                                <div class="text-3xl">🏢</div>
+                                <div>
+                                    <div class="text-2xl font-bold text-blue-600"><?= $stats['entities'] ?></div>
+                                    <div class="text-sm text-gray-600">Entities</div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="bg-white p-5 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-purple-500">
                             <div class="flex items-center gap-3">
                                 <div class="text-3xl">📍</div>
@@ -4647,93 +4696,211 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     <?php endif; ?>
                 <?php elseif ($page === 'locations'): ?>
                     <!-- Locations Management -->
-                    <h2 class="text-3xl font-bold mb-6">Location Management</h2>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                        <!-- Locations List -->
-                        <div class="bg-white rounded-lg shadow p-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-xl font-bold">Locations</h3>
-                                <button onclick="document.getElementById('locationForm').classList.toggle('hidden')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">+ Add</button>
-                            </div>
-
-                            <div id="locationForm" class="hidden mb-4 p-4 bg-gray-50 rounded">
-                                <form method="POST" action="?page=locations&action=create">
-                                    <input type="text" name="name" placeholder="Location Name" required class="w-full px-3 py-2 border rounded mb-2">
-                                    <input type="text" name="building" placeholder="Building" class="w-full px-3 py-2 border rounded mb-2">
-                                    <input type="text" name="floor" placeholder="Floor" class="w-full px-3 py-2 border rounded mb-2">
-                                    <input type="text" name="room" placeholder="Room" class="w-full px-3 py-2 border rounded mb-2">
-                                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded text-sm w-full">Create</button>
-                                </form>
-                            </div>
-
-                            <div class="space-y-2 max-h-96 overflow-y-auto">
-                                <?php
-                                $locations = $db->fetchAll("SELECT * FROM locations ORDER BY name");
-                                foreach ($locations as $loc):
-                                ?>
-                                    <div class="p-3 bg-gray-50 rounded">
-                                        <div class="flex items-center justify-between mb-1">
-                                            <div class="font-medium"><?= htmlspecialchars($loc['name']) ?></div>
-                                            <a href="?page=locations&action=edit&id=<?= $loc['id'] ?>" class="text-green-600 hover:underline text-xs">Edit</a>
-                                        </div>
-                                        <div class="text-sm text-gray-600">
-                                            <?php
-                                            $parts = array_filter([$loc['building'], $loc['floor'] ?? null, $loc['room']]);
-                                            echo htmlspecialchars(implode(' - ', $parts));
-                                            ?>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold">Locations & Cabinets</h2>
+                        <div class="flex gap-2">
+                            <button onclick="document.getElementById('locationForm').classList.toggle('hidden')" class="bg-blue-600 text-white px-4 py-2 rounded text-sm">+ Add Location</button>
+                            <button onclick="document.getElementById('cabinetForm').classList.toggle('hidden')" class="bg-green-600 text-white px-4 py-2 rounded text-sm">+ Add Cabinet</button>
                         </div>
+                    </div>
 
-                        <!-- Cabinets List -->
-                        <div class="bg-white rounded-lg shadow p-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-xl font-bold">Cabinets</h3>
-                                <button onclick="document.getElementById('cabinetForm').classList.toggle('hidden')" class="bg-green-600 text-white px-3 py-1 rounded text-sm">+ Add</button>
+                    <!-- Add Location Form -->
+                    <div id="locationForm" class="hidden mb-4 bg-white rounded-lg shadow p-6 max-w-2xl">
+                        <h3 class="text-xl font-bold mb-4">Add New Location</h3>
+                        <form method="POST" action="?page=locations&action=create">
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-gray-700 mb-2">Location Name *</label>
+                                    <input type="text" name="name" placeholder="Location Name" required class="w-full px-3 py-2 border rounded">
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">Building</label>
+                                    <input type="text" name="building" placeholder="Building" class="w-full px-3 py-2 border rounded">
+                                </div>
                             </div>
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-gray-700 mb-2">Floor</label>
+                                    <input type="text" name="floor" placeholder="Floor" class="w-full px-3 py-2 border rounded">
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">Room</label>
+                                    <input type="text" name="room" placeholder="Room" class="w-full px-3 py-2 border rounded">
+                                </div>
+                            </div>
+                            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded">Create Location</button>
+                            <button type="button" onclick="document.getElementById('locationForm').classList.add('hidden')" class="bg-gray-300 text-gray-700 px-6 py-2 rounded ml-2">Cancel</button>
+                        </form>
+                    </div>
 
-                            <div id="cabinetForm" class="hidden mb-4 p-4 bg-gray-50 rounded">
-                                <form method="POST" action="?page=cabinets&action=create">
-                                    <input type="text" name="label" placeholder="Cabinet Label" required class="w-full px-3 py-2 border rounded mb-2">
-                                    <select name="location_id" class="w-full px-3 py-2 border rounded mb-2">
+                    <!-- Add Cabinet Form -->
+                    <div id="cabinetForm" class="hidden mb-4 bg-white rounded-lg shadow p-6 max-w-2xl">
+                        <h3 class="text-xl font-bold mb-4">Add New Cabinet</h3>
+                        <form method="POST" action="?page=cabinets&action=create">
+                            <?php $locations = $db->fetchAll("SELECT * FROM locations ORDER BY name"); ?>
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-gray-700 mb-2">Cabinet Label *</label>
+                                    <input type="text" name="label" placeholder="Cabinet Label" required class="w-full px-3 py-2 border rounded">
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">Location</label>
+                                    <select name="location_id" class="w-full px-3 py-2 border rounded">
                                         <option value="">Select Location</option>
                                         <?php foreach ($locations as $loc): ?>
                                             <option value="<?= $loc['id'] ?>"><?= htmlspecialchars($loc['name']) ?></option>
                                         <?php endforeach; ?>
                                     </select>
-                                    <select name="entity_id" class="w-full px-3 py-2 border rounded mb-2">
-                                        <option value="">Select Entity (optional)</option>
-                                        <?php foreach ($allEntities as $entity): ?>
-                                            <option value="<?= $entity['id'] ?>"><?= htmlspecialchars($entity['name']) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded text-sm w-full">Create</button>
-                                </form>
+                                </div>
                             </div>
+                            <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">Entity (optional)</label>
+                                <select name="entity_id" class="w-full px-3 py-2 border rounded">
+                                    <option value="">Select Entity</option>
+                                    <?php foreach ($allEntities as $entity): ?>
+                                        <option value="<?= $entity['id'] ?>"><?= htmlspecialchars($entity['name']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded">Create Cabinet</button>
+                            <button type="button" onclick="document.getElementById('cabinetForm').classList.add('hidden')" class="bg-gray-300 text-gray-700 px-6 py-2 rounded ml-2">Cancel</button>
+                        </form>
+                    </div>
 
-                            <div class="space-y-2 max-h-96 overflow-y-auto">
-                                <?php
-                                $cabinets = $db->fetchAll("
-                                    SELECT c.*, l.name as location_name
-                                    FROM cabinets c
-                                    LEFT JOIN locations l ON c.location_id = l.id
-                                    ORDER BY l.name, c.label
-                                ");
-                                foreach ($cabinets as $cab):
-                                ?>
-                                    <div class="p-3 bg-gray-50 rounded">
-                                        <div class="flex items-center justify-between mb-1">
-                                            <div class="font-medium"><?= htmlspecialchars($cab['label']) ?></div>
-                                            <a href="?page=cabinets&action=edit&id=<?= $cab['id'] ?>" class="text-green-600 hover:underline text-xs">Edit</a>
+                    <!-- Hierarchical Location/Cabinet List -->
+                    <div class="bg-white rounded-lg shadow">
+                        <?php
+                        $locations = $db->fetchAll("SELECT * FROM locations ORDER BY name");
+                        $cabinets = $db->fetchAll("
+                            SELECT c.*, COUNT(f.id) as file_count
+                            FROM cabinets c
+                            LEFT JOIN files f ON c.id = f.current_cabinet_id AND f.is_destroyed = 0
+                            GROUP BY c.id
+                            ORDER BY c.label
+                        ");
+
+                        // Group cabinets by location
+                        $cabinetsByLocation = [];
+                        $unassignedCabinets = [];
+                        foreach ($cabinets as $cab) {
+                            if ($cab['location_id']) {
+                                $cabinetsByLocation[$cab['location_id']][] = $cab;
+                            } else {
+                                $unassignedCabinets[] = $cab;
+                            }
+                        }
+
+                        foreach ($locations as $loc):
+                            $locationCabinets = $cabinetsByLocation[$loc['id']] ?? [];
+                            $locationFileCount = array_sum(array_column($locationCabinets, 'file_count'));
+                        ?>
+                            <div class="border-b last:border-b-0">
+                                <!-- Location Header -->
+                                <div class="p-6 bg-gray-50 hover:bg-gray-100 transition-colors">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-3">
+                                                <div class="text-2xl">📍</div>
+                                                <div>
+                                                    <h3 class="text-xl font-bold"><?= htmlspecialchars($loc['name']) ?></h3>
+                                                    <div class="text-sm text-gray-600">
+                                                        <?php
+                                                        $parts = array_filter([$loc['building'], $loc['floor'] ?? null, $loc['room']]);
+                                                        echo htmlspecialchars(implode(' - ', $parts) ?: 'No address specified');
+                                                        ?>
+                                                    </div>
+                                                    <div class="text-xs text-gray-500 mt-1">
+                                                        <?= count($locationCabinets) ?> cabinet(s) • <?= $locationFileCount ?> file(s)
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="text-sm text-gray-600"><?= htmlspecialchars($cab['location_name'] ?? 'No location') ?></div>
+                                        <div class="flex items-center gap-2">
+                                            <a href="?page=locations&action=edit&id=<?= $loc['id'] ?>" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</a>
+                                            <form method="POST" action="?page=locations&action=delete&id=<?= $loc['id'] ?>" onsubmit="return confirm('Delete this location? This will disassociate <?= count($locationCabinets) ?> cabinet(s) and <?= $locationFileCount ?> file(s).');" class="inline">
+                                                <input type="hidden" name="confirm_delete" value="1">
+                                                <button type="submit" class="text-red-600 hover:text-red-800 text-sm font-medium">Delete</button>
+                                            </form>
+                                        </div>
                                     </div>
-                                <?php endforeach; ?>
+                                </div>
+
+                                <!-- Cabinets in this Location -->
+                                <?php if (!empty($locationCabinets)): ?>
+                                    <div class="p-6 pt-0">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                                            <?php foreach ($locationCabinets as $cab): ?>
+                                                <div class="bg-white border-2 border-gray-200 rounded-lg p-4 hover:border-green-300 hover:shadow-md transition-all">
+                                                    <div class="flex items-start justify-between mb-2">
+                                                        <div class="flex items-center gap-2">
+                                                            <div class="text-xl">🗄️</div>
+                                                            <div class="font-bold text-lg"><?= htmlspecialchars($cab['label']) ?></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-sm text-gray-600 mb-3">
+                                                        <?= $cab['file_count'] ?> file(s)
+                                                    </div>
+                                                    <div class="flex gap-2">
+                                                        <a href="?page=cabinets&action=edit&id=<?= $cab['id'] ?>" class="text-xs text-blue-600 hover:text-blue-800">Edit</a>
+                                                        <form method="POST" action="?page=cabinets&action=delete&id=<?= $cab['id'] ?>" onsubmit="return confirm('Delete cabinet <?= htmlspecialchars($cab['label']) ?>? This will disassociate <?= $cab['file_count'] ?> file(s).');" class="inline">
+                                                            <input type="hidden" name="confirm_delete" value="1">
+                                                            <button type="submit" class="text-xs text-red-600 hover:text-red-800">Delete</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="px-6 pb-4">
+                                        <div class="text-sm text-gray-500 italic">No cabinets in this location</div>
+                                    </div>
+                                <?php endif; ?>
                             </div>
-                        </div>
+                        <?php endforeach; ?>
+
+                        <!-- Unassigned Cabinets -->
+                        <?php if (!empty($unassignedCabinets)): ?>
+                            <div class="border-b last:border-b-0">
+                                <div class="p-6 bg-yellow-50">
+                                    <div class="flex items-center gap-3 mb-4">
+                                        <div class="text-2xl">⚠️</div>
+                                        <div>
+                                            <h3 class="text-xl font-bold text-yellow-800">Unassigned Cabinets</h3>
+                                            <div class="text-sm text-yellow-700">These cabinets are not assigned to any location</div>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        <?php foreach ($unassignedCabinets as $cab): ?>
+                                            <div class="bg-white border-2 border-yellow-300 rounded-lg p-4">
+                                                <div class="flex items-start justify-between mb-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="text-xl">🗄️</div>
+                                                        <div class="font-bold text-lg"><?= htmlspecialchars($cab['label']) ?></div>
+                                                    </div>
+                                                </div>
+                                                <div class="text-sm text-gray-600 mb-3">
+                                                    <?= $cab['file_count'] ?> file(s)
+                                                </div>
+                                                <div class="flex gap-2">
+                                                    <a href="?page=cabinets&action=edit&id=<?= $cab['id'] ?>" class="text-xs text-blue-600 hover:text-blue-800">Edit</a>
+                                                    <form method="POST" action="?page=cabinets&action=delete&id=<?= $cab['id'] ?>" onsubmit="return confirm('Delete cabinet <?= htmlspecialchars($cab['label']) ?>? This will disassociate <?= $cab['file_count'] ?> file(s).');" class="inline">
+                                                        <input type="hidden" name="confirm_delete" value="1">
+                                                        <button type="submit" class="text-xs text-red-600 hover:text-red-800">Delete</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <?php if (empty($locations) && empty($unassignedCabinets)): ?>
+                            <div class="p-6 text-center text-gray-500">
+                                No locations or cabinets yet. Click "+ Add Location" or "+ Add Cabinet" to get started.
+                            </div>
+                        <?php endif; ?>
                     </div>
 
 
