@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Enhanced
+- **File Move Functionality**: Made file moves more robust with comprehensive update capabilities
+  - Added entity assignment field to move forms
+  - Implemented location/cabinet filtering with dynamic dropdown (matching create/edit forms)
+  - Added vertical and horizontal position fields
+  - Move handler now updates entity_id, positions, and cabinet in a single operation
+  - Movement history only logged when cabinet actually changes
+  - Success message indicates which attributes changed (location/entity)
+  - Renamed action from "Move File" to "Update File Location" to reflect broader functionality
+
+### Fixed
+- **File Movements Page Display**: Fixed duplicate cabinet labels showing 3 times in movement history
+  - Changed format to clean "Location > Cabinet Label" display
+  - Removed duplicate SQL JOINs that were causing 500 errors
+  - Fixed SELECT clause to avoid duplicate column selections
+
+---
+
 ## [1.0.4] - 2026-01-02
 
 ### Changed
