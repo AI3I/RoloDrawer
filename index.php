@@ -59,8 +59,16 @@ function generateQRCodeURL($data, $size = 200) {
 
 // Helper function to get base URL for QR codes
 function getBaseURL() {
-    // Default to https://jdlewis.net/rolodrawer/ or use current URL
-    return 'https://jdlewis.net/rolodrawer/';
+    // Automatically detect the current base URL
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '/index.php';
+    $baseDir = dirname($scriptName);
+
+    // Normalize the base directory (remove trailing slash if it's just root)
+    $baseDir = ($baseDir === '/' || $baseDir === '\\') ? '' : $baseDir;
+
+    return $protocol . '://' . $host . $baseDir . '/';
 }
 
 // Simple autoloader
