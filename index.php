@@ -3574,7 +3574,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             </div>
                         <?php endif; ?>
 
-                        <?php if (!$file['is_archived'] && $_SESSION['user_role'] === 'admin'): ?>
+                        <?php if (!$file['is_archived'] && in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
                             <!-- Archive File Section -->
                             <div class="bg-white rounded-lg shadow p-6 mb-6" x-data="{ showArchiveForm: false }">
                                 <h3 class="font-bold text-lg mb-4 text-yellow-700">Archive File</h3>
@@ -4183,7 +4183,9 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             <td class="px-6 py-4">
                                                 <a href="?page=files&action=view&id=<?= $file['id'] ?>" class="text-blue-600 hover:underline mr-3">View</a>
                                                 <a href="?page=files&action=edit&id=<?= $file['id'] ?>" class="text-green-600 hover:underline mr-3">Edit</a>
-                                                <a href="#" onclick="openArchiveModal(<?= $file['id'] ?>, '<?= htmlspecialchars($file['display_number'], ENT_QUOTES) ?>'); return false;" class="text-yellow-600 hover:underline">Archive</a>
+                                                <?php if (in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
+                                                    <a href="#" onclick="openArchiveModal(<?= $file['id'] ?>, '<?= htmlspecialchars($file['display_number'], ENT_QUOTES) ?>'); return false;" class="text-yellow-600 hover:underline">Archive</a>
+                                                <?php endif; ?>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
