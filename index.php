@@ -3169,9 +3169,14 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
 
                         if (!empty($checkoutHistory)):
                         ?>
-                            <div class="bg-white rounded-lg shadow p-6 mb-6">
-                                <h3 class="font-bold text-lg mb-4">Checkout History</h3>
-                                <div class="overflow-x-auto">
+                            <div class="bg-white rounded-lg shadow p-6 mb-6" x-data="{ open: false }">
+                                <button @click="open = !open" class="w-full flex justify-between items-center text-left">
+                                    <h3 class="font-bold text-lg">Checkout History (<?= count($checkoutHistory) ?>)</h3>
+                                    <svg class="w-5 h-5 transform transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </button>
+                                <div x-show="open" x-collapse class="mt-4 overflow-x-auto">
                                     <table class="min-w-full text-sm">
                                         <thead class="bg-gray-50">
                                             <tr>
@@ -3524,14 +3529,19 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
 
                         if (!empty($movementHistory)):
                         ?>
-                            <div class="bg-white rounded-lg shadow p-6 mb-6">
-                                <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-                                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            <div class="bg-white rounded-lg shadow p-6 mb-6" x-data="{ open: false }">
+                                <button @click="open = !open" class="w-full flex justify-between items-center text-left">
+                                    <h3 class="font-bold text-lg flex items-center gap-2">
+                                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span>Movement History (<?= count($movementHistory) ?>)</span>
+                                    </h3>
+                                    <svg class="w-5 h-5 transform transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                                     </svg>
-                                    <span>Movement History</span>
-                                </h3>
-                                <div class="overflow-x-auto">
+                                </button>
+                                <div x-show="open" x-collapse class="mt-4 overflow-x-auto">
                                     <table class="min-w-full text-sm">
                                         <thead class="bg-gray-50">
                                             <tr>
@@ -3680,9 +3690,19 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         <?php endif; ?>
 
                         <?php if (!empty($relatedFiles)): ?>
-                            <div class="bg-white rounded-lg shadow p-6">
-                                <h3 class="font-bold text-lg mb-4">Related Files</h3>
-                                <div class="space-y-2">
+                            <div class="bg-white rounded-lg shadow p-6" x-data="{ open: false }">
+                                <button @click="open = !open" class="w-full flex justify-between items-center text-left">
+                                    <h3 class="font-bold text-lg flex items-center gap-2">
+                                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                                        </svg>
+                                        <span>Related Files (<?= count($relatedFiles) ?>)</span>
+                                    </h3>
+                                    <svg class="w-5 h-5 transform transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </button>
+                                <div x-show="open" x-collapse class="mt-4 space-y-2">
                                     <?php foreach ($relatedFiles as $related): ?>
                                         <div class="flex justify-between items-center p-3 bg-gray-50 rounded hover:bg-gray-100">
                                             <div>
