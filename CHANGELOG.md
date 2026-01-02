@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.4] - 2026-01-02
+
+### Changed
+- **MAJOR REFACTOR**: Simplified file organization structure by removing drawer entities
+  - Changed from Location → Cabinet → Drawer to Location → Cabinet with position tracking
+  - Vertical position now represents which drawer (Top, Upper, Lower, Bottom)
+  - Horizontal position represents position within drawer (Front, Center, Back)
+  - File location structure is now: Location → Cabinet → Vertical Position → Horizontal Position
+  - This eliminates redundancy where "which drawer" was tracked both as a drawer entity AND as vertical position
+
+### Removed
+- Drawer entities have been removed from the system
+- Drawer management UI (create, edit, QR codes)
+- Drawer statistics from dashboard
+- All drawer-related database tables, columns, and foreign keys
+
+### Added
+- Migration script `migrate_remove_drawers.php` for existing installations
+  - Automatically converts drawer assignments to cabinet + vertical position
+  - Preserves all existing file locations during migration
+  - Maps drawer positions to vertical positions (Top, Upper, Lower, Bottom)
+  - Migrates movement history from drawers to cabinets
+
+### Fixed
+- File movement now tracks cabinet changes instead of drawer changes
+- All location displays now show: Cabinet (Vertical/Horizontal)
+- Reports updated to show cabinet + position instead of drawer
+- SQL queries optimized by removing unnecessary drawer joins
+
+### Database Changes
+- Removed `drawers` table
+- Changed `files.current_drawer_id` to `files.current_cabinet_id`
+- Changed `file_movements.from_drawer_id` to `file_movements.from_cabinet_id`
+- Changed `file_movements.to_drawer_id` to `file_movements.to_cabinet_id`
+- Added database index on `files.current_cabinet_id`
+
+### Technical Details
+This refactor addresses the architectural issue where vertical position (which drawer in a cabinet) was redundantly tracked in two places: as a separate drawer entity AND as the vertical_position field. The new simplified structure uses the vertical_position field to represent which drawer, while the cabinet entity represents the physical filing cabinet. This makes the data model clearer and reduces complexity throughout the application.
+
+**Migration Path**: Existing installations should run `migrate_remove_drawers.php` ONCE after updating to v1.0.4. The script preserves all data and can safely be deleted after successful migration.
+
+---
+
 ## [1.0.3] - 2026-01-02
 
 ### Fixed

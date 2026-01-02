@@ -5,7 +5,7 @@
 // - Print individual file labels (Avery 5160 compatible)
 // - Bulk label printing for multiple files
 // - QR lookup page for scanning codes
-// - Drawer QR codes for location tracking
+// - Cabinet QR codes for location tracking
 // - Mobile-friendly lookup interface
 
 // Configure custom session directory
@@ -525,30 +525,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // DRAWER OPERATIONS
-    if ($page === 'drawers' && $action === 'create') {
-        $label = $_POST['label'] ?? '';
-        $cabinetId = $_POST['cabinet_id'] ?? '';
-        $position = $_POST['position'] ?? 0;
-
-        $db->query("INSERT INTO drawers (cabinet_id, label, position) VALUES (?, ?, ?)",
-                    [$cabinetId, $label, $position]);
-
-        header("Location: ?page=locations&message=Drawer created");
-        exit;
-    }
-
-    if ($page === 'drawers' && $action === 'edit' && $id) {
-        $label = $_POST['label'] ?? '';
-        $cabinetId = $_POST['cabinet_id'] ?? '';
-        $position = $_POST['position'] ?? 0;
-
-        $db->query("UPDATE drawers SET cabinet_id = ?, label = ?, position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                    [$cabinetId, $label, $position, $id]);
-
-        header("Location: ?page=locations&message=Drawer updated");
-        exit;
-    }
-
     // CHECKOUT HANDLER
     if ($page === 'files' && $action === 'checkout' && $id) {
         // Get the file to check if it's already checked out
@@ -649,7 +625,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $messageType = "error";
         } else {
             // Movement validation
-            $newDrawerId = !empty($_POST['new_drawer_id']) ? $_POST['new_drawer_id'] : null;
+            $newCabinetId = !empty($_POST['new_cabinet_id']) ? $_POST['new_cabinet_id'] : null;
             $moveNotes = $_POST['move_notes'] ?? '';
             $errors = [];
 
@@ -669,16 +645,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if (empty($errors)) {
-                $oldDrawerId = $file['current_drawer_id'];
+                $oldCabinetId = $file['current_cabinet_id'];
 
                 // Update file location
-                $db->query("UPDATE files SET current_drawer_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                          [$newDrawerId, $id]);
+                $db->query("UPDATE files SET current_cabinet_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                          [$newCabinetId, $id]);
 
                 // Log movement
-                $db->query("INSERT INTO file_movements (file_id, from_drawer_id, to_drawer_id, moved_by, notes, moved_at)
+                $db->query("INSERT INTO file_movements (file_id, from_cabinet_id, to_cabinet_id, moved_by, notes, moved_at)
                            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
-                           [$id, $oldDrawerId, $newDrawerId, $_SESSION['user_id'], $moveNotes ?: 'Manual move']);
+                           [$id, $oldCabinetId, $newCabinetId, $_SESSION['user_id'], $moveNotes ?: 'Manual move']);
 
                 $message = "File moved successfully!";
                 $messageType = "success";
@@ -694,7 +670,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // BULK MOVE HANDLER
     if ($page === 'files' && $action === 'bulk_move') {
         $fileIds = $_POST['file_ids'] ?? [];
-        $newDrawerId = !empty($_POST['bulk_drawer_id']) ? $_POST['bulk_drawer_id'] : null;
+        $newCabinetId = !empty($_POST['bulk_cabinet_id']) ? $_POST['bulk_cabinet_id'] : null;
         $bulkNotes = $_POST['bulk_notes'] ?? 'Bulk move operation';
 
         if (empty($fileIds)) {
@@ -731,16 +707,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 if ($canMove) {
-                    $oldDrawerId = $file['current_drawer_id'];
+                    $oldCabinetId = $file['current_cabinet_id'];
 
                     // Update file location
-                    $db->query("UPDATE files SET current_drawer_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                              [$newDrawerId, $fileId]);
+                    $db->query("UPDATE files SET current_cabinet_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                              [$newCabinetId, $fileId]);
 
                     // Log movement
-                    $db->query("INSERT INTO file_movements (file_id, from_drawer_id, to_drawer_id, moved_by, notes, moved_at)
+                    $db->query("INSERT INTO file_movements (file_id, from_cabinet_id, to_cabinet_id, moved_by, notes, moved_at)
                                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
-                               [$fileId, $oldDrawerId, $newDrawerId, $_SESSION['user_id'], $bulkNotes]);
+                               [$fileId, $oldCabinetId, $newCabinetId, $_SESSION['user_id'], $bulkNotes]);
 
                     $movedCount++;
                 } else {
@@ -1260,7 +1236,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         'destroyed' => $db->fetchOne("SELECT COUNT(*) as count FROM files WHERE is_destroyed = 1")['count'],
                         'cabinets' => $db->fetchOne("SELECT COUNT(*) as count FROM cabinets")['count'],
                         'locations' => $db->fetchOne("SELECT COUNT(*) as count FROM locations")['count'],
-                        'drawers' => $db->fetchOne("SELECT COUNT(*) as count FROM drawers")['count'],
                         'tags' => $db->fetchOne("SELECT COUNT(*) as count FROM tags")['count'],
                         'entities' => $db->fetchOne("SELECT COUNT(*) as count FROM entities")['count'],
                     ];
@@ -1329,15 +1304,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <div>
                                     <div class="text-2xl font-bold text-green-600"><?= $stats['cabinets'] ?></div>
                                     <div class="text-sm text-gray-600">Cabinets</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="bg-white p-5 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-indigo-500">
-                            <div class="flex items-center gap-3">
-                                <div class="text-3xl">📦</div>
-                                <div>
-                                    <div class="text-2xl font-bold text-indigo-600"><?= $stats['drawers'] ?></div>
-                                    <div class="text-sm text-gray-600">Drawers</div>
                                 </div>
                             </div>
                         </div>
@@ -2249,7 +2215,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             </td>
                                             <td class="px-6 py-4"><?= htmlspecialchars($file['owner_name'] ?? 'N/A') ?></td>
                                             <td class="px-6 py-4"><?= htmlspecialchars($file['entity_name'] ?? 'N/A') ?></td>
-                                            <td class="px-6 py-4"><?= htmlspecialchars(($file['cabinet_label'] ?? '') . ($file['drawer_label'] ? ' - ' . $file['drawer_label'] : 'Not assigned')) ?></td>
+                                            <td class="px-6 py-4"><?= htmlspecialchars($file['cabinet_label'] ? $file['cabinet_label'] . ' (' . $file['vertical_position'] . '/' . $file['horizontal_position'] . ')' : 'Not assigned') ?></td>
                                             <td class="px-6 py-4">
                                                 <a href="?page=files&action=view&id=<?= $file['id'] ?>" class="text-blue-600 hover:underline">View</a>
                                             </td>
@@ -2522,13 +2488,13 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             </div>
                             <div class="grid grid-cols-2 gap-4 mb-6">
                                 <div>
-                                    <label class="block text-gray-700 mb-2">Vertical Position (which drawer)</label>
+                                    <label class="block text-gray-700 mb-2">Vertical Position</label>
                                     <select name="vertical_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                         <option value="Not Specified" selected>Not Specified</option>
-                                        <option value="Top">Top Drawer</option>
-                                        <option value="Upper">Upper Drawer</option>
-                                        <option value="Lower">Lower Drawer</option>
-                                        <option value="Bottom">Bottom Drawer</option>
+                                        <option value="Top">Top</option>
+                                        <option value="Upper">Upper</option>
+                                        <option value="Lower">Lower</option>
+                                        <option value="Bottom">Bottom</option>
                                     </select>
                                 </div>
                                 <div>
@@ -2732,7 +2698,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             <div>Location: <?= htmlspecialchars($file['location_name']) ?></div>
                                             <div>Cabinet: <?= htmlspecialchars($file['cabinet_label']) ?></div>
                                             <?php if (!empty($file['vertical_position']) && $file['vertical_position'] !== 'Not Specified'): ?>
-                                                <div>Drawer: <span class="font-medium"><?= htmlspecialchars($file['vertical_position']) ?></span></div>
+                                                <div>Vertical: <span class="font-medium"><?= htmlspecialchars($file['vertical_position']) ?></span></div>
                                             <?php endif; ?>
                                             <?php if (!empty($file['horizontal_position']) && $file['horizontal_position'] !== 'Not Specified'): ?>
                                                 <div>Position: <span class="font-medium"><?= htmlspecialchars($file['horizontal_position']) ?></span></div>
@@ -3010,12 +2976,12 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <?php if ($file['location_name']): ?>
                                     <div class="mb-4 p-3 bg-blue-50 rounded">
                                         <div class="text-sm text-gray-700">
-                                            <strong>Current Location:</strong> <?= htmlspecialchars($file['location_name'] . ' > ' . $file['cabinet_label'] . ' > Drawer ' . $file['drawer_label']) ?>
+                                            <strong>Current Location:</strong> <?= htmlspecialchars($file['location_name'] . ' > Cabinet ' . $file['cabinet_label'] . ' > ' . $file['vertical_position'] . ' / ' . $file['horizontal_position']) ?>
                                         </div>
                                     </div>
                                 <?php else: ?>
                                     <div class="mb-4 p-3 bg-gray-50 rounded">
-                                        <div class="text-sm text-gray-600">This file is not currently assigned to a drawer</div>
+                                        <div class="text-sm text-gray-600">This file is not currently assigned to a cabinet</div>
                                     </div>
                                 <?php endif; ?>
 
@@ -3029,22 +2995,21 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     </div>
                                     <form method="POST" action="?page=files&action=move&id=<?= $file['id'] ?>">
                                         <div class="mb-4">
-                                            <label class="block text-gray-700 mb-2 font-medium">New Drawer *</label>
-                                            <select name="new_drawer_id" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                                <option value="">Select a drawer...</option>
+                                            <label class="block text-gray-700 mb-2 font-medium">New Cabinet *</label>
+                                            <select name="new_cabinet_id" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <option value="">Select a cabinet...</option>
                                                 <?php
-                                                $allDrawers = $db->fetchAll("
-                                                    SELECT d.id, c.label as cabinet_label, l.name as location_name
-                                                    FROM drawers d
-                                                    JOIN cabinets c ON d.cabinet_id = c.id
+                                                $allCabinets = $db->fetchAll("
+                                                    SELECT c.id, c.label as cabinet_label, l.name as location_name
+                                                    FROM cabinets c
                                                     LEFT JOIN locations l ON c.location_id = l.id
-                                                    ORDER BY l.name, c.label, d.position
+                                                    ORDER BY l.name, c.label
                                                 ");
-                                                foreach ($allDrawers as $drawer):
-                                                    $selected = ($file['drawer_id'] == $drawer['id']) ? 'selected disabled' : '';
+                                                foreach ($allCabinets as $cabinet):
+                                                    $selected = ($file['current_cabinet_id'] == $cabinet['id']) ? 'selected disabled' : '';
                                                 ?>
-                                                    <option value="<?= $drawer['id'] ?>" <?= $selected ?>>
-                                                        <?= htmlspecialchars(($drawer['location_name'] ?? 'No Location') . ' > ' . $drawer['cabinet_label'] . ' > Drawer ' . $drawer['drawer_label']) ?>
+                                                    <option value="<?= $cabinet['id'] ?>" <?= $selected ?>>
+                                                        <?= htmlspecialchars(($cabinet['location_name'] ?? 'No Location') . ' > Cabinet ' . $cabinet['cabinet_label']) ?>
                                                     </option>
                                                 <?php endforeach; ?>
                                             </select>
@@ -3067,22 +3032,21 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <?php else: ?>
                                     <form method="POST" action="?page=files&action=move&id=<?= $file['id'] ?>">
                                         <div class="mb-4">
-                                            <label class="block text-gray-700 mb-2 font-medium">New Drawer *</label>
-                                            <select name="new_drawer_id" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                                <option value="">Select a drawer...</option>
+                                            <label class="block text-gray-700 mb-2 font-medium">New Cabinet *</label>
+                                            <select name="new_cabinet_id" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <option value="">Select a cabinet...</option>
                                                 <?php
-                                                $allDrawers = $db->fetchAll("
-                                                    SELECT d.id, c.label as cabinet_label, l.name as location_name
-                                                    FROM drawers d
-                                                    JOIN cabinets c ON d.cabinet_id = c.id
+                                                $allCabinets = $db->fetchAll("
+                                                    SELECT c.id, c.label as cabinet_label, l.name as location_name
+                                                    FROM cabinets c
                                                     LEFT JOIN locations l ON c.location_id = l.id
-                                                    ORDER BY l.name, c.label, d.position
+                                                    ORDER BY l.name, c.label
                                                 ");
-                                                foreach ($allDrawers as $drawer):
-                                                    $selected = ($file['drawer_id'] == $drawer['id']) ? 'selected disabled' : '';
+                                                foreach ($allCabinets as $cabinet):
+                                                    $selected = ($file['current_cabinet_id'] == $cabinet['id']) ? 'selected disabled' : '';
                                                 ?>
-                                                    <option value="<?= $drawer['id'] ?>" <?= $selected ?>>
-                                                        <?= htmlspecialchars(($drawer['location_name'] ?? 'No Location') . ' > ' . $drawer['cabinet_label'] . ' > Drawer ' . $drawer['drawer_label']) ?>
+                                                    <option value="<?= $cabinet['id'] ?>" <?= $selected ?>>
+                                                        <?= htmlspecialchars(($cabinet['location_name'] ?? 'No Location') . ' > Cabinet ' . $cabinet['cabinet_label']) ?>
                                                     </option>
                                                 <?php endforeach; ?>
                                             </select>
@@ -3613,13 +3577,13 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 </div>
                                 <div class="grid grid-cols-2 gap-4 mb-6">
                                     <div>
-                                        <label class="block text-gray-700 mb-2">Vertical Position (which drawer)</label>
+                                        <label class="block text-gray-700 mb-2">Vertical Position</label>
                                         <select name="vertical_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                             <option value="Not Specified" <?= ($file['vertical_position'] ?? 'Not Specified') === 'Not Specified' ? 'selected' : '' ?>>Not Specified</option>
-                                            <option value="Top" <?= ($file['vertical_position'] ?? '') === 'Top' ? 'selected' : '' ?>>Top Drawer</option>
-                                            <option value="Upper" <?= ($file['vertical_position'] ?? '') === 'Upper' ? 'selected' : '' ?>>Upper Drawer</option>
-                                            <option value="Lower" <?= ($file['vertical_position'] ?? '') === 'Lower' ? 'selected' : '' ?>>Lower Drawer</option>
-                                            <option value="Bottom" <?= ($file['vertical_position'] ?? '') === 'Bottom' ? 'selected' : '' ?>>Bottom Drawer</option>
+                                            <option value="Top" <?= ($file['vertical_position'] ?? '') === 'Top' ? 'selected' : '' ?>>Top</option>
+                                            <option value="Upper" <?= ($file['vertical_position'] ?? '') === 'Upper' ? 'selected' : '' ?>>Upper</option>
+                                            <option value="Lower" <?= ($file['vertical_position'] ?? '') === 'Lower' ? 'selected' : '' ?>>Lower</option>
+                                            <option value="Bottom" <?= ($file['vertical_position'] ?? '') === 'Bottom' ? 'selected' : '' ?>>Bottom</option>
                                         </select>
                                     </div>
                                     <div>
@@ -3696,23 +3660,12 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             <td class="px-6 py-4"><?= htmlspecialchars($file['owner_name'] ?? 'N/A') ?></td>
                                             <td class="px-6 py-4"><?= htmlspecialchars($file['entity_name'] ?? 'N/A') ?></td>
                                             <td class="px-6 py-4">
-                                                <?php if ($file['cabinet_label'] && $file['drawer_label']): ?>
+                                                <?php if ($file['cabinet_label']): ?>
                                                     <div class="text-sm">
-                                                        <div><?= htmlspecialchars($file['cabinet_label'] . ' - ' . $file['drawer_label']) ?></div>
-                                                        <?php if (!empty($file['vertical_position']) && $file['vertical_position'] !== 'Not Specified' || !empty($file['horizontal_position']) && $file['horizontal_position'] !== 'Not Specified'): ?>
-                                                            <div class="text-xs text-gray-600">
-                                                                <?php
-                                                                $positions = [];
-                                                                if (!empty($file['vertical_position']) && $file['vertical_position'] !== 'Not Specified') {
-                                                                    $positions[] = $file['vertical_position'];
-                                                                }
-                                                                if (!empty($file['horizontal_position']) && $file['horizontal_position'] !== 'Not Specified') {
-                                                                    $positions[] = $file['horizontal_position'];
-                                                                }
-                                                                echo htmlspecialchars(implode(' - ', $positions));
-                                                                ?>
-                                                            </div>
-                                                        <?php endif; ?>
+                                                        <div><?= htmlspecialchars($file['cabinet_label']) ?></div>
+                                                        <div class="text-xs text-gray-600">
+                                                            <?= htmlspecialchars($file['vertical_position'] . ' / ' . $file['horizontal_position']) ?>
+                                                        </div>
                                                     </div>
                                                 <?php else: ?>
                                                     Not assigned
@@ -3749,24 +3702,23 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     <div id="bulkMoveModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                         <div class="bg-white rounded-lg p-8 max-w-md w-full">
                             <h3 class="text-2xl font-bold mb-4">Bulk Move Files</h3>
-                            <p class="text-gray-600 mb-4">Move <span id="bulkMoveCount">0</span> selected file(s) to a new drawer</p>
+                            <p class="text-gray-600 mb-4">Move <span id="bulkMoveCount">0</span> selected file(s) to a new cabinet</p>
                             <form method="POST" action="?page=files&action=bulk_move">
                                 <div class="mb-4">
-                                    <label class="block text-gray-700 mb-2 font-medium">New Drawer *</label>
-                                    <select name="bulk_drawer_id" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-purple-500">
-                                        <option value="">Select a drawer...</option>
+                                    <label class="block text-gray-700 mb-2 font-medium">New Cabinet *</label>
+                                    <select name="bulk_cabinet_id" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                        <option value="">Select a cabinet...</option>
                                         <?php
-                                        $allDrawersForBulk = $db->fetchAll("
-                                            SELECT d.id, c.label as cabinet_label, l.name as location_name
-                                            FROM drawers d
-                                            JOIN cabinets c ON d.cabinet_id = c.id
+                                        $allCabinetsForBulk = $db->fetchAll("
+                                            SELECT c.id, c.label as cabinet_label, l.name as location_name
+                                            FROM cabinets c
                                             LEFT JOIN locations l ON c.location_id = l.id
-                                            ORDER BY l.name, c.label, d.position
+                                            ORDER BY l.name, c.label
                                         ");
-                                        foreach ($allDrawersForBulk as $drawer):
+                                        foreach ($allCabinetsForBulk as $cabinet):
                                         ?>
-                                            <option value="<?= $drawer['id'] ?>">
-                                                <?= htmlspecialchars(($drawer['location_name'] ?? 'No Location') . ' > ' . $drawer['cabinet_label'] . ' > Drawer ' . $drawer['drawer_label']) ?>
+                                            <option value="<?= $cabinet['id'] ?>">
+                                                <?= htmlspecialchars(($cabinet['location_name'] ?? 'No Location') . ' > Cabinet ' . $cabinet['cabinet_label']) ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
@@ -4784,122 +4736,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         </div>
                     </div>
 
-                    <!-- Drawers Table (Full Width) -->
-                    <div class="bg-white rounded-lg shadow p-6">
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-xl font-bold">Drawers</h3>
-                            <button onclick="document.getElementById('drawerForm').classList.toggle('hidden')" class="bg-purple-600 text-white px-4 py-2 rounded text-sm">+ Add Drawer</button>
-                        </div>
-
-                        <div id="drawerForm" class="hidden mb-4 p-4 bg-gray-50 rounded max-w-md">
-                            <form method="POST" action="?page=drawers&action=create">
-                                <div class="mb-2">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Cabinet *</label>
-                                    <select name="cabinet_id" required class="w-full px-3 py-2 border rounded">
-                                        <option value="">Select Cabinet</option>
-                                        <?php foreach ($cabinets as $cab): ?>
-                                            <option value="<?= $cab['id'] ?>"><?= htmlspecialchars($cab['label']) ?><?= $cab['location_name'] ? ' (' . htmlspecialchars($cab['location_name']) . ')' : '' ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div class="mb-2">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Drawer Label *</label>
-                                    <input type="text" name="label" placeholder="A, B, Top, Bottom..." required class="w-full px-3 py-2 border rounded">
-                                </div>
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Position</label>
-                                    <input type="number" name="position" placeholder="1" value="1" class="w-full px-3 py-2 border rounded">
-                                </div>
-                                <button type="submit" class="bg-purple-600 text-white px-4 py-2 rounded text-sm w-full">Create Drawer</button>
-                            </form>
-                        </div>
-
-                        <?php
-                        $drawers = $db->fetchAll("
-                            SELECT d.*, c.label as cabinet_label, l.name as location_name
-                            FROM drawers d
-                            JOIN cabinets c ON d.cabinet_id = c.id
-                            LEFT JOIN locations l ON c.location_id = l.id
-                            ORDER BY l.name, c.label, d.position
-                        ");
-                        ?>
-
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cabinet</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Drawer</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <?php if (empty($drawers)): ?>
-                                        <tr>
-                                            <td colspan="5" class="px-6 py-4 text-center text-gray-500 text-sm">No drawers found. Click "+ Add Drawer" to create one.</td>
-                                        </tr>
-                                    <?php else: ?>
-                                        <?php foreach ($drawers as $drawer): ?>
-                                            <tr class="hover:bg-gray-50">
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><?= htmlspecialchars($drawer['location_name'] ?? '-') ?></td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"><?= htmlspecialchars($drawer['cabinet_label']) ?></td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><?= htmlspecialchars($drawer['label']) ?></td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?= $drawer['position'] ?></td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                                    <a href="?page=drawers&action=edit&id=<?= $drawer['id'] ?>" class="text-blue-600 hover:text-blue-900 mr-3">Edit</a>
-                                                    <a href="?page=locations&action=drawer_qr&id=<?= $drawer['id'] ?>" target="_blank" class="text-purple-600 hover:text-purple-900">QR Code</a>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <?php if (count($drawers) > 0): ?>
-                            <div class="mt-4 text-sm text-gray-600">
-                                Total: <?= count($drawers) ?> drawer<?= count($drawers) !== 1 ? 's' : '' ?>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-
-                    <!-- QR Code Generator for Locations/Drawers -->
-                    <?php if ($action === 'drawer_qr' && $id): ?>
-                        <?php
-                        $drawer = $db->fetchOne("
-                            SELECT d.*, c.label as cabinet_label, l.name as location_name
-                            FROM drawers d
-                            JOIN cabinets c ON d.cabinet_id = c.id
-                            LEFT JOIN locations l ON c.location_id = l.id
-                            WHERE d.id = ?
-                        ", [$id]);
-
-                        if ($drawer):
-                            $drawerURL = getBaseURL() . '?page=files&drawer_id=' . $drawer['id'];
-                            $qrCodeURL = generateQRCodeURL($drawerURL, 300);
-                        ?>
-                        <div class="mt-6 bg-white rounded-lg shadow p-6 max-w-md mx-auto text-center">
-                            <h3 class="font-bold text-xl mb-4">Drawer QR Code</h3>
-                            <p class="text-gray-600 mb-4">
-                                <strong>Location:</strong> <?= htmlspecialchars($drawer['location_name'] ?? 'N/A') ?><br>
-                                <strong>Cabinet:</strong> <?= htmlspecialchars($drawer['cabinet_label']) ?><br>
-                                <strong>Drawer:</strong> <?= htmlspecialchars($drawer['label']) ?>
-                            </p>
-                            <div class="mb-4 p-4 bg-gray-50 rounded">
-                                <img src="<?= $qrCodeURL ?>" alt="QR Code" class="mx-auto" style="width: 300px; height: 300px;">
-                            </div>
-                            <p class="text-sm text-gray-600 mb-4">Scan to view all files in this drawer</p>
-                            <button onclick="window.print()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 mr-2">
-                                Print QR Code
-                            </button>
-                            <button onclick="window.close()" class="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700">
-                                Close
-                            </button>
-                        </div>
-                        <?php endif; ?>
-                    <?php endif; ?>
 
 
                 <?php elseif ($page === 'cabinets' && $action === 'edit' && $id): ?>
@@ -4953,58 +4789,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 </div>
                                 <div class="flex gap-2">
                                     <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Update Cabinet</button>
-                                    <a href="?page=locations" class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400">Cancel</a>
-                                </div>
-                            </form>
-                        </div>
-                    <?php endif; ?>
-
-                <?php elseif ($page === 'drawers' && $action === 'edit' && $id): ?>
-                    <!-- Edit Drawer Form -->
-                    <?php
-                    $drawer = $db->fetchOne("SELECT * FROM drawers WHERE id = ?", [$id]);
-                    if (!$drawer):
-                    ?>
-                        <div class="bg-red-100 text-red-700 p-4 rounded">Drawer not found</div>
-                    <?php else:
-                        // Get all cabinets for dropdown
-                        $allCabinets = $db->fetchAll("
-                            SELECT c.id, c.label, l.name as location_name
-                            FROM cabinets c
-                            LEFT JOIN locations l ON c.location_id = l.id
-                            ORDER BY l.name, c.label
-                        ");
-                    ?>
-                        <h2 class="text-3xl font-bold mb-6">Edit Drawer: <?= htmlspecialchars($drawer['label']) ?></h2>
-                        <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
-                            <form method="POST">
-                                <div class="mb-4">
-                                    <label class="block text-gray-700 mb-2">Cabinet *</label>
-                                    <select name="cabinet_id" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="">Select Cabinet</option>
-                                        <?php foreach ($allCabinets as $cab): ?>
-                                            <option value="<?= $cab['id'] ?>" <?= $drawer['cabinet_id'] == $cab['id'] ? 'selected' : '' ?>>
-                                                <?= htmlspecialchars(($cab['location_name'] ?? 'No Location') . ' > ' . $cab['label']) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <p class="text-sm text-gray-500 mt-1">You can move this drawer to a different cabinet</p>
-                                </div>
-                                <div class="mb-4">
-                                    <label class="block text-gray-700 mb-2">Drawer Label *</label>
-                                    <input type="text" name="label" required value="<?= htmlspecialchars($drawer['label']) ?>"
-                                           placeholder="Drawer Label (A, B, Top...)"
-                                           class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                </div>
-                                <div class="mb-4">
-                                    <label class="block text-gray-700 mb-2">Position</label>
-                                    <input type="number" name="position" value="<?= htmlspecialchars($drawer['position']) ?>"
-                                           placeholder="Position"
-                                           class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <p class="text-sm text-gray-500 mt-1">Used for sorting (e.g., 1 for top drawer, 2 for second, etc.)</p>
-                                </div>
-                                <div class="flex gap-2">
-                                    <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Update Drawer</button>
                                     <a href="?page=locations" class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400">Cancel</a>
                                 </div>
                             </form>
@@ -5228,13 +5012,12 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
 
                     <?php elseif ($report === 'by_location'): ?>
                         <?php
-                        $files = $db->fetchAll("SELECT f.*, c.label as cabinet_label, l.name as location_name, e.name as entity_name, u.name as owner_name FROM files f LEFT JOIN cabinets c ON f.current_cabinet_id = c.id LEFT JOIN cabinets c ON d.cabinet_id = c.id LEFT JOIN locations l ON c.location_id = l.id LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN users u ON f.owner_id = u.id WHERE f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY l.name, c.label, d.label");
+                        $files = $db->fetchAll("SELECT f.*, c.label as cabinet_label, l.name as location_name, e.name as entity_name, u.name as owner_name FROM files f LEFT JOIN cabinets c ON f.current_cabinet_id = c.id LEFT JOIN locations l ON c.location_id = l.id LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN users u ON f.owner_id = u.id WHERE f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY l.name, c.label, f.vertical_position, f.horizontal_position");
                         $grouped = [];
                         foreach($files as $f) {
                             $loc = $f['location_name'] ?: 'No Location';
                             $cab = $f['cabinet_label'] ?: 'No Cabinet';
-                            $drawer = $f['drawer_label'] ?: 'No Drawer';
-                            $grouped[$loc][$cab][$drawer][] = $f;
+                            $grouped[$loc][$cab][] = $f;
                         }
                         ?>
                         <div class="flex justify-between items-center mb-6">
@@ -5244,33 +5027,29 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         <div class="grid grid-cols-3 gap-4 mb-6">
                             <div class="stat-card"><div class="text-2xl font-bold text-blue-600"><?= count($files) ?></div><div class="text-gray-600">Total Files</div></div>
                             <div class="stat-card"><div class="text-2xl font-bold text-green-600"><?= count($grouped) ?></div><div class="text-gray-600">Locations</div></div>
-                            <div class="stat-card"><div class="text-2xl font-bold text-purple-600"><?= array_sum(array_map('count', array_merge(...array_values($grouped)))) ?></div><div class="text-gray-600">Cabinets</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-purple-600"><?= array_sum(array_map('count', $grouped)) ?></div><div class="text-gray-600">Cabinets</div></div>
                         </div>
                         <div class="bg-white rounded-lg shadow p-6">
                             <?php foreach($grouped as $loc => $cabs): ?>
                                 <h3 class="text-xl font-bold mb-3 text-blue-600"><?= htmlspecialchars($loc) ?></h3>
-                                <?php foreach($cabs as $cab => $drawers): ?>
+                                <?php foreach($cabs as $cab => $cabinetFiles): ?>
                                     <div class="ml-4 mb-4">
-                                        <h4 class="text-lg font-semibold mb-2">Cabinet: <?= htmlspecialchars($cab) ?></h4>
-                                        <?php foreach($drawers as $drawer => $drawerFiles): ?>
-                                            <div class="ml-4 mb-3">
-                                                <h5 class="font-medium mb-2">Drawer: <?= htmlspecialchars($drawer) ?> (<?= count($drawerFiles) ?> files)</h5>
-                                                <table class="report-table ml-4">
-                                                    <thead><tr><th>File #</th><th>Name</th><th>Owner</th><th>Entity</th><th>Sensitivity</th></tr></thead>
-                                                    <tbody>
-                                                        <?php foreach($drawerFiles as $f): ?>
-                                                            <tr>
-                                                                <td><a href="?page=files&action=view&id=<?= $f['id'] ?>" class="text-blue-600 hover:underline"><?= htmlspecialchars($f['display_number']) ?></a></td>
-                                                                <td><?= htmlspecialchars($f['name']) ?></td>
-                                                                <td><?= htmlspecialchars($f['owner_name']) ?></td>
-                                                                <td><?= htmlspecialchars($f['entity_name'] ?: 'N/A') ?></td>
-                                                                <td><span class="px-2 py-1 text-xs rounded <?= $f['sensitivity'] === 'public' ? 'bg-green-100 text-green-800' : ($f['sensitivity'] === 'confidential' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800') ?>"><?= ucfirst($f['sensitivity']) ?></span></td>
-                                                            </tr>
-                                                        <?php endforeach; ?>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        <?php endforeach; ?>
+                                        <h4 class="text-lg font-semibold mb-2">Cabinet: <?= htmlspecialchars($cab) ?> (<?= count($cabinetFiles) ?> files)</h4>
+                                        <table class="report-table ml-4">
+                                            <thead><tr><th>File #</th><th>Name</th><th>Position</th><th>Owner</th><th>Entity</th><th>Sensitivity</th></tr></thead>
+                                            <tbody>
+                                                <?php foreach($cabinetFiles as $f): ?>
+                                                    <tr>
+                                                        <td><a href="?page=files&action=view&id=<?= $f['id'] ?>" class="text-blue-600 hover:underline"><?= htmlspecialchars($f['display_number']) ?></a></td>
+                                                        <td><?= htmlspecialchars($f['name']) ?></td>
+                                                        <td><?= htmlspecialchars($f['vertical_position']) ?> / <?= htmlspecialchars($f['horizontal_position']) ?></td>
+                                                        <td><?= htmlspecialchars($f['owner_name']) ?></td>
+                                                        <td><?= htmlspecialchars($f['entity_name'] ?: 'N/A') ?></td>
+                                                        <td><span class="px-2 py-1 text-xs rounded <?= $f['sensitivity'] === 'public' ? 'bg-green-100 text-green-800' : ($f['sensitivity'] === 'confidential' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800') ?>"><?= ucfirst($f['sensitivity']) ?></span></td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 <?php endforeach; ?>
                             <?php endforeach; ?>
@@ -5570,7 +5349,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             'archived' => $db->fetchOne("SELECT COUNT(*) as count FROM files WHERE is_archived = 1 AND is_destroyed = 0")['count'],
                             'destroyed' => $db->fetchOne("SELECT COUNT(*) as count FROM files WHERE is_destroyed = 1")['count']
                         ];
-                        $topLocations = $db->fetchAll("SELECT l.name, COUNT(f.id) as file_count FROM locations l LEFT JOIN cabinets c ON l.id = c.location_id LEFT JOIN drawers d ON c.id = d.cabinet_id LEFT JOIN files f ON d.id = f.current_drawer_id WHERE f.is_destroyed = 0 GROUP BY l.id ORDER BY file_count DESC LIMIT 5");
+                        $topLocations = $db->fetchAll("SELECT l.name, COUNT(f.id) as file_count FROM locations l LEFT JOIN cabinets c ON l.id = c.location_id LEFT JOIN files f ON c.id = f.current_cabinet_id WHERE f.is_destroyed = 0 GROUP BY l.id ORDER BY file_count DESC LIMIT 5");
                         $topEntities = $db->fetchAll("SELECT e.name, COUNT(f.id) as file_count FROM entities e LEFT JOIN files f ON e.id = f.entity_id WHERE f.is_destroyed = 0 GROUP BY e.id ORDER BY file_count DESC LIMIT 5");
                         $topTags = $db->fetchAll("SELECT t.name, t.color, COUNT(ft.file_id) as usage_count FROM tags t LEFT JOIN file_tags ft ON t.id = ft.tag_id GROUP BY t.id ORDER BY usage_count DESC LIMIT 10");
                         ?>
@@ -5622,7 +5401,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             $fieldMap = ['display_number' => 'f.display_number', 'name' => 'f.name', 'owner' => 'u.name as owner_name', 'entity' => 'e.name as entity_name', 'location' => 'l.name as location_name', 'sensitivity' => 'f.sensitivity', 'status' => "CASE WHEN f.is_archived = 1 THEN 'Archived' WHEN f.is_checked_out = 1 THEN 'Checked Out' ELSE 'Active' END as status", 'created_at' => 'f.created_at'];
                             $selectFields = array_map(fn($f) => $fieldMap[$f] ?? '', $fields);
                             $headers = array_map(fn($f) => ucwords(str_replace('_', ' ', $f)), $fields);
-                            $query = "SELECT " . implode(', ', $selectFields) . " FROM files f LEFT JOIN users u ON f.owner_id = u.id LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN cabinets c ON f.current_cabinet_id = c.id LEFT JOIN cabinets c ON d.cabinet_id = c.id LEFT JOIN locations l ON c.location_id = l.id WHERE 1=1";
+                            $query = "SELECT " . implode(', ', $selectFields) . " FROM files f LEFT JOIN users u ON f.owner_id = u.id LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN cabinets c ON f.current_cabinet_id = c.id LEFT JOIN locations l ON c.location_id = l.id WHERE 1=1";
                             $params = [];
                             if (!empty($_GET['filter_status'])) {
                                 if ($_GET['filter_status'] === 'active') $query .= " AND f.is_archived = 0 AND f.is_destroyed = 0 AND f.is_checked_out = 0";
