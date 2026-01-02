@@ -666,6 +666,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             // Movement validation
             $newCabinetId = !empty($_POST['new_cabinet_id']) ? $_POST['new_cabinet_id'] : null;
+            $newEntityId = !empty($_POST['entity_id']) ? $_POST['entity_id'] : null;
+            $verticalPosition = $_POST['vertical_position'] ?? $file['vertical_position'];
+            $horizontalPosition = $_POST['horizontal_position'] ?? $file['horizontal_position'];
             $moveNotes = $_POST['move_notes'] ?? '';
             $errors = [];
 
@@ -686,17 +689,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (empty($errors)) {
                 $oldCabinetId = $file['current_cabinet_id'];
+                $oldEntityId = $file['entity_id'];
 
-                // Update file location
-                $db->query("UPDATE files SET current_cabinet_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                          [$newCabinetId, $id]);
+                // Update file location, entity, and positions
+                $db->query("UPDATE files SET current_cabinet_id = ?, entity_id = ?, vertical_position = ?, horizontal_position = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                          [$newCabinetId, $newEntityId, $verticalPosition, $horizontalPosition, $id]);
 
-                // Log movement
-                $db->query("INSERT INTO file_movements (file_id, from_cabinet_id, to_cabinet_id, moved_by, notes, moved_at)
-                           VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
-                           [$id, $oldCabinetId, $newCabinetId, $_SESSION['user_id'], $moveNotes ?: 'Manual move']);
+                // Log movement (only if cabinet changed)
+                if ($oldCabinetId != $newCabinetId) {
+                    $db->query("INSERT INTO file_movements (file_id, from_cabinet_id, to_cabinet_id, moved_by, notes, moved_at)
+                               VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                               [$id, $oldCabinetId, $newCabinetId, $_SESSION['user_id'], $moveNotes ?: 'Manual move']);
+                }
 
-                $message = "File moved successfully!";
+                $changes = [];
+                if ($oldCabinetId != $newCabinetId) $changes[] = "location";
+                if ($oldEntityId != $newEntityId) $changes[] = "entity";
+                $changeDesc = $changes ? " (" . implode(", ", $changes) . " changed)" : "";
+
+                $message = "File updated successfully!" . $changeDesc;
                 $messageType = "success";
                 header("Location: ?page=files&action=view&id=$id&message=" . urlencode($message));
                 exit;
@@ -3078,75 +3089,235 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     </div>
                                 <?php elseif ($file['is_archived']): ?>
                                     <div class="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 mb-4">
-                                        Warning: This file is archived. Moving it will not change its archived status.
+                                        Warning: This file is archived. Updating it will not change its archived status.
                                     </div>
                                     <form method="POST" action="?page=files&action=move&id=<?= $file['id'] ?>">
+                                        <!-- Entity Assignment -->
                                         <div class="mb-4">
-                                            <label class="block text-gray-700 mb-2 font-medium">New Cabinet *</label>
-                                            <select name="new_cabinet_id" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                                <option value="">Select a cabinet...</option>
+                                            <label class="block text-gray-700 mb-2">Assign to Entity (optional)</label>
+                                            <select name="entity_id" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <option value="">Not assigned to entity</option>
                                                 <?php
-                                                $allCabinets = $db->fetchAll("
-                                                    SELECT c.id, c.label as cabinet_label, l.name as location_name
-                                                    FROM cabinets c
-                                                    LEFT JOIN locations l ON c.location_id = l.id
-                                                    ORDER BY l.name, c.label
-                                                ");
-                                                foreach ($allCabinets as $cabinet):
-                                                    $selected = ($file['current_cabinet_id'] == $cabinet['id']) ? 'selected disabled' : '';
+                                                $allEntities = $db->fetchAll("SELECT id, name FROM entities ORDER BY name");
+                                                foreach ($allEntities as $entity):
+                                                    $selected = ($file['entity_id'] == $entity['id']) ? 'selected' : '';
                                                 ?>
-                                                    <option value="<?= $cabinet['id'] ?>" <?= $selected ?>>
-                                                        <?= htmlspecialchars(($cabinet['location_name'] ?? 'No Location') . ' > Cabinet ' . $cabinet['cabinet_label']) ?>
-                                                    </option>
+                                                    <option value="<?= $entity['id'] ?>" <?= $selected ?>><?= htmlspecialchars($entity['name']) ?></option>
                                                 <?php endforeach; ?>
                                             </select>
                                         </div>
+
+                                        <!-- Location and Cabinet Selection -->
+                                        <div class="grid grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <label class="block text-gray-700 mb-2">Filter by Location</label>
+                                                <select id="location_filter_move_archived" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                    <option value="">All locations...</option>
+                                                    <?php
+                                                    $allLocations = $db->fetchAll("SELECT id, name FROM locations ORDER BY name");
+                                                    // Get current file's cabinet location
+                                                    $currentCabinet = $db->fetchOne("SELECT c.location_id FROM cabinets c WHERE c.id = ?", [$file['current_cabinet_id']]);
+                                                    $currentLocationId = $currentCabinet['location_id'] ?? null;
+                                                    foreach ($allLocations as $loc):
+                                                        $selected = ($currentLocationId == $loc['id']) ? 'selected' : '';
+                                                    ?>
+                                                        <option value="<?= $loc['id'] ?>" <?= $selected ?>><?= htmlspecialchars($loc['name']) ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-gray-700 mb-2">Assign to Cabinet</label>
+                                                <select name="new_cabinet_id" id="cabinet_select_move_archived" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                    <option value="">Not assigned</option>
+                                                    <?php
+                                                    $allCabinets = $db->fetchAll("
+                                                        SELECT c.id, c.label as cabinet_label, c.location_id
+                                                        FROM cabinets c
+                                                        ORDER BY c.label
+                                                    ");
+                                                    foreach ($allCabinets as $cabinet):
+                                                        $selected = ($file['current_cabinet_id'] == $cabinet['id']) ? 'selected' : '';
+                                                    ?>
+                                                        <option value="<?= $cabinet['id'] ?>" data-location="<?= $cabinet['location_id'] ?? '' ?>" <?= $selected ?>>
+                                                            Cabinet <?= htmlspecialchars($cabinet['cabinet_label']) ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <!-- Position Fields -->
+                                        <div class="grid grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <label class="block text-gray-700 mb-2">Vertical Position</label>
+                                                <select name="vertical_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                    <option value="Not Specified" <?= $file['vertical_position'] === 'Not Specified' ? 'selected' : '' ?>>Not Specified</option>
+                                                    <option value="Top" <?= $file['vertical_position'] === 'Top' ? 'selected' : '' ?>>Top</option>
+                                                    <option value="Upper" <?= $file['vertical_position'] === 'Upper' ? 'selected' : '' ?>>Upper</option>
+                                                    <option value="Lower" <?= $file['vertical_position'] === 'Lower' ? 'selected' : '' ?>>Lower</option>
+                                                    <option value="Bottom" <?= $file['vertical_position'] === 'Bottom' ? 'selected' : '' ?>>Bottom</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-gray-700 mb-2">Horizontal Position</label>
+                                                <select name="horizontal_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                    <option value="Not Specified" <?= $file['horizontal_position'] === 'Not Specified' ? 'selected' : '' ?>>Not Specified</option>
+                                                    <option value="Front" <?= $file['horizontal_position'] === 'Front' ? 'selected' : '' ?>>Front</option>
+                                                    <option value="Center" <?= $file['horizontal_position'] === 'Center' ? 'selected' : '' ?>>Center</option>
+                                                    <option value="Back" <?= $file['horizontal_position'] === 'Back' ? 'selected' : '' ?>>Back</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
                                         <div class="mb-4">
-                                            <label class="block text-gray-700 mb-2">Reason for Move (Optional)</label>
-                                            <textarea name="move_notes" rows="2" placeholder="e.g., Reorganization, space optimization, etc."
+                                            <label class="block text-gray-700 mb-2">Reason for Changes (Optional)</label>
+                                            <textarea name="move_notes" rows="2" placeholder="e.g., Reorganization, space optimization, entity reassignment, etc."
                                                       class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                                         </div>
                                         <div class="mb-4">
                                             <label class="flex items-center">
                                                 <input type="checkbox" name="confirm_archived" value="1" class="mr-2">
-                                                <span class="text-sm">I confirm I want to move this archived file</span>
+                                                <span class="text-sm">I confirm I want to update this archived file</span>
                                             </label>
                                         </div>
                                         <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-medium">
-                                            Move File
+                                            Update File Location
                                         </button>
                                     </form>
+                                    <script>
+                                    // Dynamic cabinet filtering based on location (for archived files)
+                                    document.getElementById('location_filter_move_archived').addEventListener('change', function() {
+                                        const locationId = this.value;
+                                        const cabinetSelect = document.getElementById('cabinet_select_move_archived');
+                                        const options = cabinetSelect.querySelectorAll('option');
+
+                                        options.forEach(option => {
+                                            if (option.value === '' || !locationId || option.dataset.location === locationId) {
+                                                option.style.display = '';
+                                            } else {
+                                                option.style.display = 'none';
+                                            }
+                                        });
+
+                                        // Reset selection if current selection is now hidden
+                                        if (cabinetSelect.selectedOptions[0] && cabinetSelect.selectedOptions[0].style.display === 'none') {
+                                            cabinetSelect.value = '';
+                                        }
+                                    });
+                                    // Trigger on page load to filter based on pre-selected location
+                                    document.getElementById('location_filter_move_archived').dispatchEvent(new Event('change'));
+                                    </script>
                                 <?php else: ?>
                                     <form method="POST" action="?page=files&action=move&id=<?= $file['id'] ?>">
+                                        <!-- Entity Assignment -->
                                         <div class="mb-4">
-                                            <label class="block text-gray-700 mb-2 font-medium">New Cabinet *</label>
-                                            <select name="new_cabinet_id" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                                <option value="">Select a cabinet...</option>
+                                            <label class="block text-gray-700 mb-2">Assign to Entity (optional)</label>
+                                            <select name="entity_id" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <option value="">Not assigned to entity</option>
                                                 <?php
-                                                $allCabinets = $db->fetchAll("
-                                                    SELECT c.id, c.label as cabinet_label, l.name as location_name
-                                                    FROM cabinets c
-                                                    LEFT JOIN locations l ON c.location_id = l.id
-                                                    ORDER BY l.name, c.label
-                                                ");
-                                                foreach ($allCabinets as $cabinet):
-                                                    $selected = ($file['current_cabinet_id'] == $cabinet['id']) ? 'selected disabled' : '';
+                                                $allEntities = $db->fetchAll("SELECT id, name FROM entities ORDER BY name");
+                                                foreach ($allEntities as $entity):
+                                                    $selected = ($file['entity_id'] == $entity['id']) ? 'selected' : '';
                                                 ?>
-                                                    <option value="<?= $cabinet['id'] ?>" <?= $selected ?>>
-                                                        <?= htmlspecialchars(($cabinet['location_name'] ?? 'No Location') . ' > Cabinet ' . $cabinet['cabinet_label']) ?>
-                                                    </option>
+                                                    <option value="<?= $entity['id'] ?>" <?= $selected ?>><?= htmlspecialchars($entity['name']) ?></option>
                                                 <?php endforeach; ?>
                                             </select>
                                         </div>
+
+                                        <!-- Location and Cabinet Selection -->
+                                        <div class="grid grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <label class="block text-gray-700 mb-2">Filter by Location</label>
+                                                <select id="location_filter_move" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                    <option value="">All locations...</option>
+                                                    <?php
+                                                    $allLocations = $db->fetchAll("SELECT id, name FROM locations ORDER BY name");
+                                                    // Get current file's cabinet location
+                                                    $currentCabinet = $db->fetchOne("SELECT c.location_id FROM cabinets c WHERE c.id = ?", [$file['current_cabinet_id']]);
+                                                    $currentLocationId = $currentCabinet['location_id'] ?? null;
+                                                    foreach ($allLocations as $loc):
+                                                        $selected = ($currentLocationId == $loc['id']) ? 'selected' : '';
+                                                    ?>
+                                                        <option value="<?= $loc['id'] ?>" <?= $selected ?>><?= htmlspecialchars($loc['name']) ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-gray-700 mb-2">Assign to Cabinet</label>
+                                                <select name="new_cabinet_id" id="cabinet_select_move" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                    <option value="">Not assigned</option>
+                                                    <?php
+                                                    $allCabinets = $db->fetchAll("
+                                                        SELECT c.id, c.label as cabinet_label, c.location_id
+                                                        FROM cabinets c
+                                                        ORDER BY c.label
+                                                    ");
+                                                    foreach ($allCabinets as $cabinet):
+                                                        $selected = ($file['current_cabinet_id'] == $cabinet['id']) ? 'selected' : '';
+                                                    ?>
+                                                        <option value="<?= $cabinet['id'] ?>" data-location="<?= $cabinet['location_id'] ?? '' ?>" <?= $selected ?>>
+                                                            Cabinet <?= htmlspecialchars($cabinet['cabinet_label']) ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <!-- Position Fields -->
+                                        <div class="grid grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <label class="block text-gray-700 mb-2">Vertical Position</label>
+                                                <select name="vertical_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                    <option value="Not Specified" <?= $file['vertical_position'] === 'Not Specified' ? 'selected' : '' ?>>Not Specified</option>
+                                                    <option value="Top" <?= $file['vertical_position'] === 'Top' ? 'selected' : '' ?>>Top</option>
+                                                    <option value="Upper" <?= $file['vertical_position'] === 'Upper' ? 'selected' : '' ?>>Upper</option>
+                                                    <option value="Lower" <?= $file['vertical_position'] === 'Lower' ? 'selected' : '' ?>>Lower</option>
+                                                    <option value="Bottom" <?= $file['vertical_position'] === 'Bottom' ? 'selected' : '' ?>>Bottom</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-gray-700 mb-2">Horizontal Position</label>
+                                                <select name="horizontal_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                    <option value="Not Specified" <?= $file['horizontal_position'] === 'Not Specified' ? 'selected' : '' ?>>Not Specified</option>
+                                                    <option value="Front" <?= $file['horizontal_position'] === 'Front' ? 'selected' : '' ?>>Front</option>
+                                                    <option value="Center" <?= $file['horizontal_position'] === 'Center' ? 'selected' : '' ?>>Center</option>
+                                                    <option value="Back" <?= $file['horizontal_position'] === 'Back' ? 'selected' : '' ?>>Back</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
                                         <div class="mb-4">
-                                            <label class="block text-gray-700 mb-2">Reason for Move (Optional)</label>
-                                            <textarea name="move_notes" rows="2" placeholder="e.g., Reorganization, space optimization, etc."
+                                            <label class="block text-gray-700 mb-2">Reason for Changes (Optional)</label>
+                                            <textarea name="move_notes" rows="2" placeholder="e.g., Reorganization, space optimization, entity reassignment, etc."
                                                       class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                                         </div>
                                         <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-medium">
-                                            Move File
+                                            Update File Location
                                         </button>
                                     </form>
+                                    <script>
+                                    // Dynamic cabinet filtering based on location
+                                    document.getElementById('location_filter_move').addEventListener('change', function() {
+                                        const locationId = this.value;
+                                        const cabinetSelect = document.getElementById('cabinet_select_move');
+                                        const options = cabinetSelect.querySelectorAll('option');
+
+                                        options.forEach(option => {
+                                            if (option.value === '' || !locationId || option.dataset.location === locationId) {
+                                                option.style.display = '';
+                                            } else {
+                                                option.style.display = 'none';
+                                            }
+                                        });
+
+                                        // Reset selection if current selection is now hidden
+                                        if (cabinetSelect.selectedOptions[0] && cabinetSelect.selectedOptions[0].style.display === 'none') {
+                                            cabinetSelect.value = '';
+                                        }
+                                    });
+                                    // Trigger on page load to filter based on pre-selected location
+                                    document.getElementById('location_filter_move').dispatchEvent(new Event('change'));
+                                    </script>
                                 <?php endif; ?>
                             </div>
                         <?php endif; ?>
@@ -4104,15 +4275,13 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         SELECT fm.*,
                                f.display_number, f.name as file_name,
                                u.name as moved_by_name,
-                               l_from.name as from_location_name, c_from.label as from_cabinet_label, c_from.label as from_cabinet_label,
-                               l_to.name as to_location_name, c_to.label as to_cabinet_label, c_to.label as to_cabinet_label
+                               l_from.name as from_location_name, c_from.label as from_cabinet_label,
+                               l_to.name as to_location_name, c_to.label as to_cabinet_label
                         FROM file_movements fm
                         LEFT JOIN files f ON fm.file_id = f.id
                         LEFT JOIN users u ON fm.moved_by = u.id
                         LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
-                        LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
                         LEFT JOIN locations l_from ON c_from.location_id = l_from.id
-                        LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
                         LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
                         LEFT JOIN locations l_to ON c_to.location_id = l_to.id
                         WHERE " . implode(' AND ', $where) . "
@@ -4252,14 +4421,14 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             </td>
                                             <td class="px-4 py-3">
                                                 <?php if ($m['from_location_name']): ?>
-                                                    <span class="text-xs"><?= htmlspecialchars($m['from_location_name'] . ' > ' . $m['from_cabinet_label'] . ' > ' . $m['from_cabinet_label']) ?></span>
+                                                    <span class="text-xs"><?= htmlspecialchars($m['from_location_name'] . ' > Cabinet ' . $m['from_cabinet_label']) ?></span>
                                                 <?php else: ?>
                                                     <span class="text-gray-400 italic text-xs">Unassigned</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td class="px-4 py-3">
                                                 <?php if ($m['to_location_name']): ?>
-                                                    <span class="text-xs"><?= htmlspecialchars($m['to_location_name'] . ' > ' . $m['to_cabinet_label'] . ' > ' . $m['to_cabinet_label']) ?></span>
+                                                    <span class="text-xs"><?= htmlspecialchars($m['to_location_name'] . ' > Cabinet ' . $m['to_cabinet_label']) ?></span>
                                                 <?php else: ?>
                                                     <span class="text-gray-400 italic text-xs">Unassigned</span>
                                                 <?php endif; ?>
