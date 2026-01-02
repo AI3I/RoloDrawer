@@ -7,7 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.0] - 2026-01-15
+## [1.0.1] - 2026-01-02
+
+### Added
+- Floor field to locations (Building → Floor → Room hierarchy)
+- Installation validation and test scripts
+- Acknowledgments section in README dedicated to Matthew Ferry
+
+### Fixed
+- **CRITICAL**: Avery label printing now correctly renders only labels (not entire page)
+- Moved label print logic before main layout to prevent double rendering
+- Corrected release date from future date (2026-01-15) to actual date (2026-01-02)
+- Removed non-existent support contact information from documentation
+- Updated all fake URLs (forums, knowledge base) to point to GitHub resources
+
+### Changed
+- Users menu item relocated above Change Password in navigation (below admin separator)
+- Consolidated documentation URLs to GitHub repository
+- Updated support sections to reflect open-source nature (no official support)
+
+---
+
+## [1.0.0] - 2026-01-02
 
 ### Initial Release
 
@@ -352,7 +373,7 @@ See LICENSE.txt for licensing information.
 
 ## Version History
 
-- **[1.0.0] - 2026-01-15**: Initial release
+- **[1.0.0] - 2026-01-02**: Initial release
 
 ---
 

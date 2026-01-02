@@ -717,4 +717,4 @@ php scripts/system_info.php
 
 ---
 
-*Last updated: January 2026 - Version 1.0.0*
+*Last updated: January 2026 - Version 1.0.1*

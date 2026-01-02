@@ -774,19 +774,18 @@ Click the **?** icon in the top navigation for:
 - Video tutorials
 - Context-sensitive help
 
-### Support Contact
+### Getting Help
 
 Need assistance?
-- **Email**: support@yourcompany.com
-- **Phone**: (555) 555-5555
-- **Help Desk**: https://helpdesk.yourcompany.com
+- Check this user guide (USER_GUIDE.md)
+- Review the admin guide (ADMIN_GUIDE.md)
+- Contact your system administrator
 
-### Feedback
+### Feedback & Bug Reports
 
-Have suggestions or found a bug?
-- Click **Feedback** in the user menu
-- Fill out the feedback form
-- Or email: feedback@yourcompany.com
+Found a bug or have suggestions?
+- Report issues on GitHub: https://github.com/AI3I/RoloDrawer/issues
+- Join discussions: https://github.com/AI3I/RoloDrawer/discussions
 
 ---
 
@@ -852,4 +851,4 @@ Have suggestions or found a bug?
 
 ---
 
-*Last updated: January 2026 - Version 1.0.0*
+*Last updated: January 2026 - Version 1.0.1*

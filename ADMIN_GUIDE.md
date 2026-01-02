@@ -1484,17 +1484,16 @@ Configure webhooks for integrations:
 
 ### Admin Resources
 
-- **Admin Forum**: https://forum.rolodrawer.com/admin
-- **Documentation**: https://docs.rolodrawer.com
-- **Video Tutorials**: https://learn.rolodrawer.com
-- **Knowledge Base**: https://kb.rolodrawer.com
+- **Documentation**: Included in this repository (README.md, INSTALLATION.md, USER_GUIDE.md, ADMIN_GUIDE.md)
+- **Source Code**: https://github.com/AI3I/RoloDrawer
+- **Community**: https://github.com/AI3I/RoloDrawer/discussions
 
 ### Getting Support
 
-For admin issues:
-- **Email**: admin-support@rolodrawer.com
-- **Priority Support**: (555) 555-5555 ext. 2
-- **Emergency**: emergency@rolodrawer.com (24/7)
+RoloDrawer is open-source software with no official support. For help:
+- Check the documentation (README.md, USER_GUIDE.md, ADMIN_GUIDE.md)
+- Review GitHub issues: https://github.com/AI3I/RoloDrawer/issues
+- Community discussions: https://github.com/AI3I/RoloDrawer/discussions
 
 ### Training
 
@@ -1506,4 +1505,4 @@ Train your users:
 
 ---
 
-*Last updated: January 2026 - Version 1.0.0*
+*Last updated: January 2026 - Version 1.0.1*

@@ -105,7 +105,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU GPLv3 - see the [LICENSE](LICENSE) file for details.
+
+## 💫 Acknowledgments
+
+**Dedicated to Matthew Ferry**, who for decades has sought a solution to herd and tame chaos. May this tool bring order to your filing cabinets and peace to your document management.
 
 ## 🆘 Support
 
