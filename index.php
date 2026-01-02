@@ -4128,12 +4128,13 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Entity</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sensitivity</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 <?php if (empty($files)): ?>
-                                    <tr><td colspan="8" class="px-6 py-4 text-center text-gray-500">
+                                    <tr><td colspan="9" class="px-6 py-4 text-center text-gray-500">
                                         No files yet. <a href="?page=files&action=create" class="text-blue-600 hover:underline">Create one</a>
                                     </td></tr>
                                 <?php else: ?>
@@ -4173,6 +4174,11 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                 <?php else: ?>
                                                     <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Available</span>
                                                 <?php endif; ?>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <span class="px-2 py-1 text-xs rounded <?= $file['sensitivity'] === 'public' ? 'bg-green-100 text-green-800' : ($file['sensitivity'] === 'confidential' ? 'bg-red-100 text-red-800' : ($file['sensitivity'] === 'restricted' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800')) ?>">
+                                                    <?= getSensitivityEmoji($file['sensitivity']) ?> <?= ucfirst($file['sensitivity']) ?>
+                                                </span>
                                             </td>
                                             <td class="px-6 py-4">
                                                 <a href="?page=files&action=view&id=<?= $file['id'] ?>" class="text-blue-600 hover:underline mr-3">View</a>
