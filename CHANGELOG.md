@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.3] - 2026-01-02
+
+### Fixed
+- **CRITICAL**: Fixed session persistence issues preventing login on production servers
+  - Implemented custom session directory (`storage/sessions`) with automatic creation
+  - Added session cookie configuration for better browser compatibility (HttpOnly, SameSite=Lax)
+  - Resolves issue where sessions weren't persisting between page requests
+- **CRITICAL**: Fixed logout functionality
+  - Moved logout logic before HTML output to allow proper header redirects
+  - Logout now correctly destroys session and redirects to login page
+  - Previously logout would clear content but leave sidebar visible
+- Fixed hardcoded base URL in QR code generation
+  - Changed `getBaseURL()` to automatically detect current protocol, host, and path
+  - Application now works on any domain without code changes
+- Fixed login form default email to match actual admin credentials (`admin@rolodrawer.local`)
+
+### Added
+- Login page icon matching main application (file cabinet emoji 🗂️)
+- Database migration capability for adding missing schema columns on existing installations
+
+### Technical Details
+Production servers (particularly Plesk environments) often lack the default PHP session directory (`/var/lib/php/session`) or have restrictive permissions. The custom session directory ensures sessions work reliably across all hosting environments. Additionally, modern browsers require proper SameSite cookie attributes for session cookies to function correctly.
+
+---
+
 ## [1.0.2] - 2026-01-02
 
 ### Fixed

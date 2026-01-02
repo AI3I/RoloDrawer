@@ -1,7 +1,7 @@
 <?php
 /**
  * RoloDrawer Installation Test Script
- * Version: 1.0.2
+ * Version: 1.0.3
  *
  * This script tests your RoloDrawer installation to ensure everything is configured correctly.
  * Run this from your browser: http://yourdomain.com/rolodrawer/test_installation.php
@@ -10,7 +10,7 @@
 header('Content-Type: text/plain; charset=utf-8');
 
 echo "╔════════════════════════════════════════════════════════════════╗\n";
-echo "║         RoloDrawer Installation Test - Version 1.0.2          ║\n";
+echo "║         RoloDrawer Installation Test - Version 1.0.3          ║\n";
 echo "╚════════════════════════════════════════════════════════════════╝\n\n";
 
 $errors = 0;
