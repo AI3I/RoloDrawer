@@ -3099,19 +3099,19 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <?php if (empty($file['is_archived']) && in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
                                     <!-- Archive Section within same box -->
                                     <div class="mt-6 pt-6 border-t border-gray-200">
-                                        <h4 class="font-bold text-md mb-2 text-yellow-700">Archive File</h4>
-                                        <p class="text-xs text-gray-600 mb-3">
-                                            Remove from active listings while preserving all data.
+                                        <h3 class="font-bold text-lg mb-4 text-yellow-700">Archive File</h3>
+                                        <p class="text-sm text-gray-600 mb-4">
+                                            Archiving removes this file from active listings while preserving all data for future reference.
                                         </p>
                                         <form method="POST" action="?page=files&action=archive&id=<?= $file['id'] ?>" onsubmit="return confirm('Are you sure you want to archive this file?');">
-                                            <div class="mb-3">
-                                                <label class="block text-gray-700 mb-2 text-sm font-medium">Archive Reason (Required)</label>
+                                            <div class="mb-4">
+                                                <label class="block text-gray-700 mb-2">Archive Reason (Required)</label>
                                                 <textarea name="archived_reason" required rows="2"
                                                           placeholder="e.g., Project completed, Retention period expired, etc."
-                                                          class="w-full px-3 py-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"></textarea>
+                                                          class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-yellow-500"></textarea>
                                             </div>
-                                            <button type="submit" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 text-sm font-medium">
-                                                Archive This File
+                                            <button type="submit" class="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700 flex items-center gap-2">
+                                                <span>Archive This File</span>
                                             </button>
                                         </form>
                                     </div>
@@ -3201,10 +3201,10 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <?php endif; ?>
 
                                 <!-- Proposed Location Display -->
-                                <div id="proposed_location_display" class="mb-4 p-3 bg-green-50 rounded border border-green-200">
+                                <div id="proposed_location_display" class="mb-4 p-3 bg-red-50 rounded border border-red-200">
                                     <div class="text-sm text-gray-700">
-                                        <strong class="text-green-700">Proposed Location:</strong>
-                                        <span id="proposed_location_text" class="text-gray-600 italic">Make selections below...</span>
+                                        <strong class="text-red-700">Proposed Location:</strong>
+                                        <span id="proposed_location_text" class="text-gray-600">Make selections below...</span>
                                     </div>
                                 </div>
 
@@ -3359,7 +3359,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         const horizontal = horizontalSelect?.value || 'Not Specified';
 
                                         if (!cabinetLabel) {
-                                            proposedText.innerHTML = '<span class="text-gray-500 italic">Select cabinet to see proposed location...</span>';
+                                            proposedText.innerHTML = '<span class="text-gray-500">Select cabinet to see proposed location...</span>';
                                             return;
                                         }
 
@@ -3518,7 +3518,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         const horizontal = horizontalSelect?.value || 'Not Specified';
 
                                         if (!cabinetLabel) {
-                                            proposedText.innerHTML = '<span class="text-gray-500 italic">Select cabinet to see proposed location...</span>';
+                                            proposedText.innerHTML = '<span class="text-gray-500">Select cabinet to see proposed location...</span>';
                                             return;
                                         }
 
