@@ -3166,161 +3166,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             <!-- Right Column: MOVE FILE SECTION -->
                             <div>
 
-                        <!-- FILE HISTORY (Checkout + Movement) -->
-                        <?php
-                        $checkoutHistory = $db->fetchAll("
-                            SELECT fc.*, u.name as user_name
-                            FROM file_checkouts fc
-                            LEFT JOIN users u ON fc.user_id = u.id
-                            WHERE fc.file_id = ?
-                            ORDER BY fc.checked_out_at DESC
-                            LIMIT 20
-                        ", [$id]);
-
-                        $movementHistory = $db->fetchAll("
-                            SELECT fm.*,
-                                   u.name as moved_by_name,
-                                   l_from.name as from_location_name, c_from.label as from_cabinet_label,
-                                   l_to.name as to_location_name, c_to.label as to_cabinet_label
-                            FROM file_movements fm
-                            LEFT JOIN users u ON fm.moved_by = u.id
-                            LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
-                            LEFT JOIN locations l_from ON c_from.location_id = l_from.id
-                            LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
-                            LEFT JOIN locations l_to ON c_to.location_id = l_to.id
-                            WHERE fm.file_id = ?
-                            ORDER BY fm.moved_at DESC
-                            LIMIT 50
-                        ", [$id]);
-
-                        if (!empty($checkoutHistory) || !empty($movementHistory)):
-                        ?>
-                            <div class="bg-white rounded-lg shadow p-6 mb-6" x-data="{ open: false, activeTab: 'checkouts' }">
-                                <button @click="open = !open" class="w-full flex justify-between items-center text-left">
-                                    <h3 class="font-bold text-lg flex items-center gap-2">
-                                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                        <span>File History</span>
-                                    </h3>
-                                    <svg class="w-5 h-5 transform transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                    </svg>
-                                </button>
-
-                                <div x-show="open" x-collapse class="mt-4">
-                                    <!-- Tabs -->
-                                    <div class="border-b border-gray-200 mb-4">
-                                        <nav class="flex gap-4">
-                                            <?php if (!empty($checkoutHistory)): ?>
-                                                <button @click="activeTab = 'checkouts'"
-                                                        :class="activeTab === 'checkouts' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                                                        class="py-2 px-1 border-b-2 font-medium text-sm">
-                                                    Checkouts (<?= count($checkoutHistory) ?>)
-                                                </button>
-                                            <?php endif; ?>
-                                            <?php if (!empty($movementHistory)): ?>
-                                                <button @click="activeTab = 'movements'"
-                                                        :class="activeTab === 'movements' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
-                                                        class="py-2 px-1 border-b-2 font-medium text-sm">
-                                                    Movements (<?= count($movementHistory) ?>)
-                                                </button>
-                                            <?php endif; ?>
-                                        </nav>
-                                    </div>
-
-                                    <!-- Checkout History Tab -->
-                                    <?php if (!empty($checkoutHistory)): ?>
-                                        <div x-show="activeTab === 'checkouts'" class="overflow-x-auto">
-                                            <table class="min-w-full text-sm">
-                                                <thead class="bg-gray-50">
-                                                    <tr>
-                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Checked Out</th>
-                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Expected Return</th>
-                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Returned</th>
-                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
-                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody class="bg-white divide-y divide-gray-200">
-                                                    <?php foreach ($checkoutHistory as $checkout): ?>
-                                                        <?php
-                                                        $wasOverdue = $checkout['returned_at'] && strtotime($checkout['returned_at']) > strtotime($checkout['expected_return_date']);
-                                                        $isOverdueNow = !$checkout['returned_at'] && isOverdue($checkout['expected_return_date']);
-                                                        $duration = '';
-                                                        if ($checkout['returned_at']) {
-                                                            $days = floor((strtotime($checkout['returned_at']) - strtotime($checkout['checked_out_at'])) / 86400);
-                                                            $duration = $days . ' day' . ($days != 1 ? 's' : '');
-                                                        } else {
-                                                            $days = floor((time() - strtotime($checkout['checked_out_at'])) / 86400);
-                                                            $duration = $days . ' day' . ($days != 1 ? 's' : '') . ' (ongoing)';
-                                                        }
-                                                        ?>
-                                                        <tr class="<?= ($wasOverdue || $isOverdueNow) ? 'bg-red-50' : '' ?>">
-                                                            <td class="px-4 py-2"><?= htmlspecialchars($checkout['user_name']) ?></td>
-                                                            <td class="px-4 py-2"><?= date('M j, Y', strtotime($checkout['checked_out_at'])) ?></td>
-                                                            <td class="px-4 py-2 <?= ($wasOverdue || $isOverdueNow) ? 'text-red-600 font-medium' : '' ?>">
-                                                                <?= date('M j, Y', strtotime($checkout['expected_return_date'])) ?>
-                                                                <?php if ($isOverdueNow): ?>
-                                                                    <span class="ml-1 px-1 py-0.5 text-xs bg-red-200 text-red-800 rounded">OVERDUE</span>
-                                                                <?php endif; ?>
-                                                            </td>
-                                                            <td class="px-4 py-2">
-                                                                <?= $checkout['returned_at'] ? date('M j, Y', strtotime($checkout['returned_at'])) : '<span class="text-orange-600">Not returned</span>' ?>
-                                                            </td>
-                                                            <td class="px-4 py-2"><?= $duration ?></td>
-                                                            <td class="px-4 py-2 text-xs text-gray-600"><?= htmlspecialchars($checkout['notes'] ?? '-') ?></td>
-                                                        </tr>
-                                                    <?php endforeach; ?>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    <?php endif; ?>
-
-                                    <!-- Movement History Tab -->
-                                    <?php if (!empty($movementHistory)): ?>
-                                        <div x-show="activeTab === 'movements'" class="overflow-x-auto">
-                                            <table class="min-w-full text-sm">
-                                                <thead class="bg-gray-50">
-                                                    <tr>
-                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">From</th>
-                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">To</th>
-                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Moved By</th>
-                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody class="bg-white divide-y divide-gray-200">
-                                                    <?php foreach ($movementHistory as $movement): ?>
-                                                        <tr>
-                                                            <td class="px-4 py-2 whitespace-nowrap"><?= date('M j, Y g:i A', strtotime($movement['moved_at'])) ?></td>
-                                                            <td class="px-4 py-2">
-                                                                <?php if ($movement['from_location_name']): ?>
-                                                                    <span class="text-xs"><?= htmlspecialchars($movement['from_location_name'] . ' > Cabinet ' . $movement['from_cabinet_label']) ?></span>
-                                                                <?php else: ?>
-                                                                    <span class="text-gray-400 italic">Unassigned</span>
-                                                                <?php endif; ?>
-                                                            </td>
-                                                            <td class="px-4 py-2">
-                                                                <?php if ($movement['to_location_name']): ?>
-                                                                    <span class="text-xs"><?= htmlspecialchars($movement['to_location_name'] . ' > Cabinet ' . $movement['to_cabinet_label']) ?></span>
-                                                                <?php else: ?>
-                                                                    <span class="text-gray-400 italic">Unassigned</span>
-                                                                <?php endif; ?>
-                                                            </td>
-                                                            <td class="px-4 py-2"><?= htmlspecialchars($movement['moved_by_name'] ?? 'Unknown') ?></td>
-                                                            <td class="px-4 py-2 text-xs text-gray-600"><?= htmlspecialchars($movement['notes'] ?? '-') ?></td>
-                                                        </tr>
-                                                    <?php endforeach; ?>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-
                         <!-- MANUAL FILE MOVE SECTION -->
                         <?php if (!$file['is_destroyed']): ?>
                             <div class="bg-white rounded-lg shadow p-6 mb-6">
@@ -3608,7 +3453,160 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             </div>
                         </div>
 
+                        <!-- FILE HISTORY (Checkout + Movement) - Full Width at Bottom -->
+                        <?php
+                        $checkoutHistory = $db->fetchAll("
+                            SELECT fc.*, u.name as user_name
+                            FROM file_checkouts fc
+                            LEFT JOIN users u ON fc.user_id = u.id
+                            WHERE fc.file_id = ?
+                            ORDER BY fc.checked_out_at DESC
+                            LIMIT 20
+                        ", [$id]);
 
+                        $movementHistory = $db->fetchAll("
+                            SELECT fm.*,
+                                   u.name as moved_by_name,
+                                   l_from.name as from_location_name, c_from.label as from_cabinet_label,
+                                   l_to.name as to_location_name, c_to.label as to_cabinet_label
+                            FROM file_movements fm
+                            LEFT JOIN users u ON fm.moved_by = u.id
+                            LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
+                            LEFT JOIN locations l_from ON c_from.location_id = l_from.id
+                            LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
+                            LEFT JOIN locations l_to ON c_to.location_id = l_to.id
+                            WHERE fm.file_id = ?
+                            ORDER BY fm.moved_at DESC
+                            LIMIT 50
+                        ", [$id]);
+
+                        if (!empty($checkoutHistory) || !empty($movementHistory)):
+                        ?>
+                            <div class="bg-white rounded-lg shadow p-6 mb-6" x-data="{ open: false, activeTab: 'checkouts' }">
+                                <button @click="open = !open" class="w-full flex justify-between items-center text-left">
+                                    <h3 class="font-bold text-lg flex items-center gap-2">
+                                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span>File History</span>
+                                    </h3>
+                                    <svg class="w-5 h-5 transform transition-transform" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </button>
+
+                                <div x-show="open" x-collapse class="mt-4">
+                                    <!-- Tabs -->
+                                    <div class="border-b border-gray-200 mb-4">
+                                        <nav class="flex gap-4">
+                                            <?php if (!empty($checkoutHistory)): ?>
+                                                <button @click="activeTab = 'checkouts'"
+                                                        :class="activeTab === 'checkouts' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                                                        class="py-2 px-1 border-b-2 font-medium text-sm">
+                                                    Checkouts (<?= count($checkoutHistory) ?>)
+                                                </button>
+                                            <?php endif; ?>
+                                            <?php if (!empty($movementHistory)): ?>
+                                                <button @click="activeTab = 'movements'"
+                                                        :class="activeTab === 'movements' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                                                        class="py-2 px-1 border-b-2 font-medium text-sm">
+                                                    Movements (<?= count($movementHistory) ?>)
+                                                </button>
+                                            <?php endif; ?>
+                                        </nav>
+                                    </div>
+
+                                    <!-- Checkout History Tab -->
+                                    <?php if (!empty($checkoutHistory)): ?>
+                                        <div x-show="activeTab === 'checkouts'" class="overflow-x-auto">
+                                            <table class="min-w-full text-sm">
+                                                <thead class="bg-gray-50">
+                                                    <tr>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Checked Out</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Expected Return</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Returned</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="bg-white divide-y divide-gray-200">
+                                                    <?php foreach ($checkoutHistory as $checkout): ?>
+                                                        <?php
+                                                        $wasOverdue = $checkout['returned_at'] && strtotime($checkout['returned_at']) > strtotime($checkout['expected_return_date']);
+                                                        $isOverdueNow = !$checkout['returned_at'] && isOverdue($checkout['expected_return_date']);
+                                                        $duration = '';
+                                                        if ($checkout['returned_at']) {
+                                                            $days = floor((strtotime($checkout['returned_at']) - strtotime($checkout['checked_out_at'])) / 86400);
+                                                            $duration = $days . ' day' . ($days != 1 ? 's' : '');
+                                                        } else {
+                                                            $days = floor((time() - strtotime($checkout['checked_out_at'])) / 86400);
+                                                            $duration = $days . ' day' . ($days != 1 ? 's' : '') . ' (ongoing)';
+                                                        }
+                                                        ?>
+                                                        <tr class="<?= ($wasOverdue || $isOverdueNow) ? 'bg-red-50' : '' ?>">
+                                                            <td class="px-4 py-2"><?= htmlspecialchars($checkout['user_name']) ?></td>
+                                                            <td class="px-4 py-2"><?= date('M j, Y', strtotime($checkout['checked_out_at'])) ?></td>
+                                                            <td class="px-4 py-2 <?= ($wasOverdue || $isOverdueNow) ? 'text-red-600 font-medium' : '' ?>">
+                                                                <?= date('M j, Y', strtotime($checkout['expected_return_date'])) ?>
+                                                                <?php if ($isOverdueNow): ?>
+                                                                    <span class="ml-1 px-1 py-0.5 text-xs bg-red-200 text-red-800 rounded">OVERDUE</span>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                            <td class="px-4 py-2">
+                                                                <?= $checkout['returned_at'] ? date('M j, Y', strtotime($checkout['returned_at'])) : '<span class="text-orange-600">Not returned</span>' ?>
+                                                            </td>
+                                                            <td class="px-4 py-2"><?= $duration ?></td>
+                                                            <td class="px-4 py-2 text-xs text-gray-600"><?= htmlspecialchars($checkout['notes'] ?? '-') ?></td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <!-- Movement History Tab -->
+                                    <?php if (!empty($movementHistory)): ?>
+                                        <div x-show="activeTab === 'movements'" class="overflow-x-auto">
+                                            <table class="min-w-full text-sm">
+                                                <thead class="bg-gray-50">
+                                                    <tr>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">From</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">To</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Moved By</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="bg-white divide-y divide-gray-200">
+                                                    <?php foreach ($movementHistory as $movement): ?>
+                                                        <tr>
+                                                            <td class="px-4 py-2 whitespace-nowrap"><?= date('M j, Y g:i A', strtotime($movement['moved_at'])) ?></td>
+                                                            <td class="px-4 py-2">
+                                                                <?php if ($movement['from_location_name']): ?>
+                                                                    <span class="text-xs"><?= htmlspecialchars($movement['from_location_name'] . ' > Cabinet ' . $movement['from_cabinet_label']) ?></span>
+                                                                <?php else: ?>
+                                                                    <span class="text-gray-400 italic">Unassigned</span>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                            <td class="px-4 py-2">
+                                                                <?php if ($movement['to_location_name']): ?>
+                                                                    <span class="text-xs"><?= htmlspecialchars($movement['to_location_name'] . ' > Cabinet ' . $movement['to_cabinet_label']) ?></span>
+                                                                <?php else: ?>
+                                                                    <span class="text-gray-400 italic">Unassigned</span>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                            <td class="px-4 py-2"><?= htmlspecialchars($movement['moved_by_name'] ?? 'Unknown') ?></td>
+                                                            <td class="px-4 py-2 text-xs text-gray-600"><?= htmlspecialchars($movement['notes'] ?? '-') ?></td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
 
                         <?php if ($file['is_archived'] && !$file['is_destroyed'] && $_SESSION['user_role'] === 'admin'): ?>
                             <!-- Destruction Section (Admin Only, Archived Files Only) -->
