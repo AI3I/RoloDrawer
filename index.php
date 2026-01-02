@@ -3509,14 +3509,12 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         $movementHistory = $db->fetchAll("
                             SELECT fm.*,
                                    u.name as moved_by_name,
-                                   l_from.name as from_location_name, c_from.label as from_cabinet_label, c_from.label as from_cabinet_label,
-                                   l_to.name as to_location_name, c_to.label as to_cabinet_label, c_to.label as to_cabinet_label
+                                   l_from.name as from_location_name, c_from.label as from_cabinet_label,
+                                   l_to.name as to_location_name, c_to.label as to_cabinet_label
                             FROM file_movements fm
                             LEFT JOIN users u ON fm.moved_by = u.id
                             LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
-                            LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
                             LEFT JOIN locations l_from ON c_from.location_id = l_from.id
-                            LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
                             LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
                             LEFT JOIN locations l_to ON c_to.location_id = l_to.id
                             WHERE fm.file_id = ?
@@ -3581,6 +3579,18 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <p class="text-gray-500 text-sm">No movement history for this file</p>
                             </div>
                         <?php endif; ?>
+
+                        <!-- DEBUG: Archive Section Conditions -->
+                        <div class="bg-yellow-100 border border-yellow-400 p-4 rounded mb-4">
+                            <h4 class="font-bold mb-2">🔍 DEBUG: Archive Section Visibility Check</h4>
+                            <div class="text-sm space-y-1">
+                                <div><strong>File is_archived value:</strong> <?= var_export($file['is_archived'], true) ?></div>
+                                <div><strong>empty($file['is_archived']):</strong> <?= var_export(empty($file['is_archived']), true) ?></div>
+                                <div><strong>User role:</strong> <?= htmlspecialchars($_SESSION['user_role'] ?? 'NOT SET') ?></div>
+                                <div><strong>in_array check:</strong> <?= var_export(in_array($_SESSION['user_role'], ['admin', 'user']), true) ?></div>
+                                <div><strong>Both conditions met:</strong> <?= var_export(empty($file['is_archived']) && in_array($_SESSION['user_role'], ['admin', 'user']), true) ?></div>
+                            </div>
+                        </div>
 
                         <?php if (empty($file['is_archived']) && in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
                             <!-- Archive File Section -->
