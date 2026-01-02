@@ -1214,7 +1214,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     <span class="inline-block w-5">🏢</span> Entities
                 </a>
                 <a href="?page=locations" class="block px-4 py-2 <?= $page === 'locations' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
-                    <span class="inline-block w-5">📍</span> Locations & Cabinets
+                    <span class="inline-block w-5">📍</span> File Storage
                 </a>
                 <a href="?page=tags" class="block px-4 py-2 <?= $page === 'tags' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
                     <span class="inline-block w-5">🏷️</span> Tags
@@ -4676,9 +4676,9 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                            class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
                                 <div class="mb-4">
-                                    <label class="block text-gray-700 mb-2">Room</label>
+                                    <label class="block text-gray-700 mb-2">Suite</label>
                                     <input type="text" name="room" value="<?= htmlspecialchars($location['room']) ?>"
-                                           placeholder="Room"
+                                           placeholder="Suite"
                                            class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
                                 <div class="mb-4">
@@ -4724,8 +4724,8 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     <input type="text" name="floor" placeholder="Floor" class="w-full px-3 py-2 border rounded">
                                 </div>
                                 <div>
-                                    <label class="block text-gray-700 mb-2">Room</label>
-                                    <input type="text" name="room" placeholder="Room" class="w-full px-3 py-2 border rounded">
+                                    <label class="block text-gray-700 mb-2">Suite</label>
+                                    <input type="text" name="room" placeholder="Suite" class="w-full px-3 py-2 border rounded">
                                 </div>
                             </div>
                             <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded">Create Location</button>
@@ -4805,8 +4805,11 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                     <h3 class="text-xl font-bold"><?= htmlspecialchars($loc['name']) ?></h3>
                                                     <div class="text-sm text-gray-600">
                                                         <?php
-                                                        $parts = array_filter([$loc['building'], $loc['floor'] ?? null, $loc['room']]);
-                                                        echo htmlspecialchars(implode(' - ', $parts) ?: 'No address specified');
+                                                        $parts = [];
+                                                        if ($loc['building']) $parts[] = $loc['building'];
+                                                        if ($loc['floor']) $parts[] = 'Floor ' . $loc['floor'];
+                                                        if ($loc['room']) $parts[] = 'Suite ' . $loc['room'];
+                                                        echo htmlspecialchars(implode(' • ', $parts) ?: 'No address specified');
                                                         ?>
                                                     </div>
                                                     <div class="text-xs text-gray-500 mt-1">
@@ -4834,7 +4837,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                     <div class="flex items-start justify-between mb-2">
                                                         <div class="flex items-center gap-2">
                                                             <div class="text-xl">🗄️</div>
-                                                            <div class="font-bold text-lg"><?= htmlspecialchars($cab['label']) ?></div>
+                                                            <div class="font-bold text-lg">Cabinet <?= htmlspecialchars($cab['label']) ?></div>
                                                         </div>
                                                     </div>
                                                     <div class="text-sm text-gray-600 mb-3">
@@ -4876,7 +4879,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                 <div class="flex items-start justify-between mb-2">
                                                     <div class="flex items-center gap-2">
                                                         <div class="text-xl">🗄️</div>
-                                                        <div class="font-bold text-lg"><?= htmlspecialchars($cab['label']) ?></div>
+                                                        <div class="font-bold text-lg">Cabinet <?= htmlspecialchars($cab['label']) ?></div>
                                                     </div>
                                                 </div>
                                                 <div class="text-sm text-gray-600 mb-3">
