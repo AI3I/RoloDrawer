@@ -3189,16 +3189,24 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 </h3>
 
                                 <?php if ($file['location_name']): ?>
-                                    <div class="mb-4 p-3 bg-blue-50 rounded">
+                                    <div class="mb-2 p-3 bg-blue-50 rounded">
                                         <div class="text-sm text-gray-700">
                                             <strong>Current Location:</strong> <?= htmlspecialchars($file['location_name'] . ' > Cabinet ' . $file['cabinet_label'] . ' > ' . $file['vertical_position'] . ' / ' . $file['horizontal_position']) ?>
                                         </div>
                                     </div>
                                 <?php else: ?>
-                                    <div class="mb-4 p-3 bg-gray-50 rounded">
+                                    <div class="mb-2 p-3 bg-gray-50 rounded">
                                         <div class="text-sm text-gray-600">This file is not currently assigned to a cabinet</div>
                                     </div>
                                 <?php endif; ?>
+
+                                <!-- Proposed Location Display -->
+                                <div id="proposed_location_display" class="mb-4 p-3 bg-green-50 rounded border border-green-200">
+                                    <div class="text-sm text-gray-700">
+                                        <strong class="text-green-700">Proposed Location:</strong>
+                                        <span id="proposed_location_text" class="text-gray-600 italic">Make selections below...</span>
+                                    </div>
+                                </div>
 
                                 <?php if ($file['is_checked_out'] && $_SESSION['user_role'] !== 'admin'): ?>
                                     <div class="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
@@ -3212,7 +3220,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         <!-- Entity Assignment -->
                                         <div class="mb-4">
                                             <label class="block text-gray-700 mb-2">Assign to Entity (optional)</label>
-                                            <select name="entity_id" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <select name="entity_id" id="entity_select_move_archived" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                                 <option value="">Not assigned to entity</option>
                                                 <?php
                                                 $allEntities = $db->fetchAll("SELECT id, name FROM entities ORDER BY name");
@@ -3248,14 +3256,19 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                     <option value="">Not assigned</option>
                                                     <?php
                                                     $allCabinets = $db->fetchAll("
-                                                        SELECT c.id, c.label as cabinet_label, c.location_id
+                                                        SELECT c.id, c.label as cabinet_label, c.location_id, l.name as location_name
                                                         FROM cabinets c
+                                                        LEFT JOIN locations l ON c.location_id = l.id
                                                         ORDER BY c.label
                                                     ");
                                                     foreach ($allCabinets as $cabinet):
                                                         $selected = ($file['current_cabinet_id'] == $cabinet['id']) ? 'selected' : '';
                                                     ?>
-                                                        <option value="<?= $cabinet['id'] ?>" data-location="<?= $cabinet['location_id'] ?? '' ?>" <?= $selected ?>>
+                                                        <option value="<?= $cabinet['id'] ?>"
+                                                                data-location="<?= $cabinet['location_id'] ?? '' ?>"
+                                                                data-location-name="<?= htmlspecialchars($cabinet['location_name'] ?? '') ?>"
+                                                                data-cabinet-label="<?= htmlspecialchars($cabinet['cabinet_label']) ?>"
+                                                                <?= $selected ?>>
                                                             Cabinet <?= htmlspecialchars($cabinet['cabinet_label']) ?>
                                                         </option>
                                                     <?php endforeach; ?>
@@ -3267,7 +3280,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         <div class="grid grid-cols-2 gap-4 mb-4">
                                             <div>
                                                 <label class="block text-gray-700 mb-2">Vertical Position</label>
-                                                <select name="vertical_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <select name="vertical_position" id="vertical_position_move" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                                     <option value="Not Specified" <?= $file['vertical_position'] === 'Not Specified' ? 'selected' : '' ?>>Not Specified</option>
                                                     <option value="Top" <?= $file['vertical_position'] === 'Top' ? 'selected' : '' ?>>Top</option>
                                                     <option value="Upper" <?= $file['vertical_position'] === 'Upper' ? 'selected' : '' ?>>Upper</option>
@@ -3277,7 +3290,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             </div>
                                             <div>
                                                 <label class="block text-gray-700 mb-2">Horizontal Position</label>
-                                                <select name="horizontal_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <select name="horizontal_position" id="horizontal_position_move" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                                     <option value="Not Specified" <?= $file['horizontal_position'] === 'Not Specified' ? 'selected' : '' ?>>Not Specified</option>
                                                     <option value="Front" <?= $file['horizontal_position'] === 'Front' ? 'selected' : '' ?>>Front</option>
                                                     <option value="Center" <?= $file['horizontal_position'] === 'Center' ? 'selected' : '' ?>>Center</option>
@@ -3331,10 +3344,41 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         }
                                     }
 
+                                    function updateProposedLocationArchived() {
+                                        const cabinetSelect = document.getElementById('cabinet_select_move_archived');
+                                        const verticalSelect = document.getElementById('vertical_position_move');
+                                        const horizontalSelect = document.getElementById('horizontal_position_move');
+                                        const proposedText = document.getElementById('proposed_location_text');
+
+                                        if (!proposedText) return;
+
+                                        const selectedCabinet = cabinetSelect.selectedOptions[0];
+                                        const locationName = selectedCabinet?.dataset.locationName || '';
+                                        const cabinetLabel = selectedCabinet?.dataset.cabinetLabel || '';
+                                        const vertical = verticalSelect?.value || 'Not Specified';
+                                        const horizontal = horizontalSelect?.value || 'Not Specified';
+
+                                        if (!cabinetLabel) {
+                                            proposedText.innerHTML = '<span class="text-gray-500 italic">Select cabinet to see proposed location...</span>';
+                                            return;
+                                        }
+
+                                        const parts = [];
+                                        if (locationName) parts.push(locationName);
+                                        if (cabinetLabel) parts.push('Cabinet ' + cabinetLabel);
+                                        parts.push(vertical + ' / ' + horizontal);
+
+                                        proposedText.innerHTML = '<span class="font-medium text-gray-800">' + parts.join(' > ') + '</span>';
+                                    }
+
                                     document.getElementById('location_filter_move_archived').addEventListener('change', filterCabinetsMoveSArchived);
+                                    document.getElementById('cabinet_select_move_archived')?.addEventListener('change', updateProposedLocationArchived);
+                                    document.getElementById('vertical_position_move')?.addEventListener('change', updateProposedLocationArchived);
+                                    document.getElementById('horizontal_position_move')?.addEventListener('change', updateProposedLocationArchived);
 
                                     // Trigger on page load to filter based on pre-selected location
                                     filterCabinetsMoveSArchived();
+                                    updateProposedLocationArchived();
                                     </script>
                                 <?php else: ?>
                                     <form method="POST" action="?page=files&action=move&id=<?= $file['id'] ?>">
@@ -3377,14 +3421,19 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                     <option value="">Not assigned</option>
                                                     <?php
                                                     $allCabinets = $db->fetchAll("
-                                                        SELECT c.id, c.label as cabinet_label, c.location_id
+                                                        SELECT c.id, c.label as cabinet_label, c.location_id, l.name as location_name
                                                         FROM cabinets c
+                                                        LEFT JOIN locations l ON c.location_id = l.id
                                                         ORDER BY c.label
                                                     ");
                                                     foreach ($allCabinets as $cabinet):
                                                         $selected = ($file['current_cabinet_id'] == $cabinet['id']) ? 'selected' : '';
                                                     ?>
-                                                        <option value="<?= $cabinet['id'] ?>" data-location="<?= $cabinet['location_id'] ?? '' ?>" <?= $selected ?>>
+                                                        <option value="<?= $cabinet['id'] ?>"
+                                                                data-location="<?= $cabinet['location_id'] ?? '' ?>"
+                                                                data-location-name="<?= htmlspecialchars($cabinet['location_name'] ?? '') ?>"
+                                                                data-cabinet-label="<?= htmlspecialchars($cabinet['cabinet_label']) ?>"
+                                                                <?= $selected ?>>
                                                             Cabinet <?= htmlspecialchars($cabinet['cabinet_label']) ?>
                                                         </option>
                                                     <?php endforeach; ?>
@@ -3396,7 +3445,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         <div class="grid grid-cols-2 gap-4 mb-4">
                                             <div>
                                                 <label class="block text-gray-700 mb-2">Vertical Position</label>
-                                                <select name="vertical_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <select name="vertical_position" id="vertical_position_move" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                                     <option value="Not Specified" <?= $file['vertical_position'] === 'Not Specified' ? 'selected' : '' ?>>Not Specified</option>
                                                     <option value="Top" <?= $file['vertical_position'] === 'Top' ? 'selected' : '' ?>>Top</option>
                                                     <option value="Upper" <?= $file['vertical_position'] === 'Upper' ? 'selected' : '' ?>>Upper</option>
@@ -3406,7 +3455,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             </div>
                                             <div>
                                                 <label class="block text-gray-700 mb-2">Horizontal Position</label>
-                                                <select name="horizontal_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                <select name="horizontal_position" id="horizontal_position_move" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                                     <option value="Not Specified" <?= $file['horizontal_position'] === 'Not Specified' ? 'selected' : '' ?>>Not Specified</option>
                                                     <option value="Front" <?= $file['horizontal_position'] === 'Front' ? 'selected' : '' ?>>Front</option>
                                                     <option value="Center" <?= $file['horizontal_position'] === 'Center' ? 'selected' : '' ?>>Center</option>
@@ -3454,10 +3503,41 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         }
                                     }
 
+                                    function updateProposedLocation() {
+                                        const cabinetSelect = document.getElementById('cabinet_select_move');
+                                        const verticalSelect = document.getElementById('vertical_position_move');
+                                        const horizontalSelect = document.getElementById('horizontal_position_move');
+                                        const proposedText = document.getElementById('proposed_location_text');
+
+                                        if (!proposedText) return; // Element doesn't exist on all move forms
+
+                                        const selectedCabinet = cabinetSelect.selectedOptions[0];
+                                        const locationName = selectedCabinet?.dataset.locationName || '';
+                                        const cabinetLabel = selectedCabinet?.dataset.cabinetLabel || '';
+                                        const vertical = verticalSelect?.value || 'Not Specified';
+                                        const horizontal = horizontalSelect?.value || 'Not Specified';
+
+                                        if (!cabinetLabel) {
+                                            proposedText.innerHTML = '<span class="text-gray-500 italic">Select cabinet to see proposed location...</span>';
+                                            return;
+                                        }
+
+                                        const parts = [];
+                                        if (locationName) parts.push(locationName);
+                                        if (cabinetLabel) parts.push('Cabinet ' + cabinetLabel);
+                                        parts.push(vertical + ' / ' + horizontal);
+
+                                        proposedText.innerHTML = '<span class="font-medium text-gray-800">' + parts.join(' > ') + '</span>';
+                                    }
+
                                     document.getElementById('location_filter_move').addEventListener('change', filterCabinetsMove);
+                                    document.getElementById('cabinet_select_move')?.addEventListener('change', updateProposedLocation);
+                                    document.getElementById('vertical_position_move')?.addEventListener('change', updateProposedLocation);
+                                    document.getElementById('horizontal_position_move')?.addEventListener('change', updateProposedLocation);
 
                                     // Trigger on page load to filter based on pre-selected location
                                     filterCabinetsMove();
+                                    updateProposedLocation();
                                     </script>
                                 <?php endif; ?>
                             </div>
