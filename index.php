@@ -1781,10 +1781,10 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     FROM file_movements fm
                                     LEFT JOIN files f ON fm.file_id = f.id
                                     LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
-                                    LEFT JOIN cabinets c_from ON d_from.cabinet_id = c_from.id
+                                    LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
                                     LEFT JOIN locations l_from ON c_from.location_id = l_from.id
                                     LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
-                                    LEFT JOIN cabinets c_to ON d_to.cabinet_id = c_to.id
+                                    LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
                                     LEFT JOIN locations l_to ON c_to.location_id = l_to.id
                                     WHERE fm.moved_by = ?
                                     ORDER BY fm.moved_at DESC
@@ -3161,10 +3161,10 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             FROM file_movements fm
                             LEFT JOIN users u ON fm.moved_by = u.id
                             LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
-                            LEFT JOIN cabinets c_from ON d_from.cabinet_id = c_from.id
+                            LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
                             LEFT JOIN locations l_from ON c_from.location_id = l_from.id
                             LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
-                            LEFT JOIN cabinets c_to ON d_to.cabinet_id = c_to.id
+                            LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
                             LEFT JOIN locations l_to ON c_to.location_id = l_to.id
                             WHERE fm.file_id = ?
                             ORDER BY fm.moved_at DESC
@@ -4039,24 +4039,22 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             SELECT fm.*,
                                    f.display_number, f.name as file_name,
                                    u.name as moved_by_name,
-                                   l_from.name as from_location_name, c_from.label as from_cabinet_label, c_from.label as from_cabinet_label,
-                                   l_to.name as to_location_name, c_to.label as to_cabinet_label, c_to.label as to_cabinet_label
+                                   l_from.name as from_location_name, c_from.label as from_cabinet_label,
+                                   l_to.name as to_location_name, c_to.label as to_cabinet_label
                             FROM file_movements fm
                             LEFT JOIN files f ON fm.file_id = f.id
                             LEFT JOIN users u ON fm.moved_by = u.id
                             LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
-                            LEFT JOIN cabinets c_from ON d_from.cabinet_id = c_from.id
                             LEFT JOIN locations l_from ON c_from.location_id = l_from.id
                             LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
-                            LEFT JOIN cabinets c_to ON d_to.cabinet_id = c_to.id
                             LEFT JOIN locations l_to ON c_to.location_id = l_to.id
                             WHERE " . implode(' AND ', $where) . "
                             ORDER BY fm.moved_at DESC
                         ", $params);
 
                         foreach ($movements as $m) {
-                            $fromLoc = $m['from_location_name'] ? ($m['from_location_name'] . ' > ' . $m['from_cabinet_label'] . ' > ' . $m['from_cabinet_label']) : 'Unassigned';
-                            $toLoc = $m['to_location_name'] ? ($m['to_location_name'] . ' > ' . $m['to_cabinet_label'] . ' > ' . $m['to_cabinet_label']) : 'Unassigned';
+                            $fromLoc = $m['from_location_name'] ? ($m['from_location_name'] . ' > Cabinet ' . $m['from_cabinet_label']) : 'Unassigned';
+                            $toLoc = $m['to_location_name'] ? ($m['to_location_name'] . ' > Cabinet ' . $m['to_cabinet_label']) : 'Unassigned';
                             fputcsv($output, [
                                 date('Y-m-d H:i:s', strtotime($m['moved_at'])),
                                 '#' . $m['display_number'],
@@ -4112,10 +4110,10 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         LEFT JOIN files f ON fm.file_id = f.id
                         LEFT JOIN users u ON fm.moved_by = u.id
                         LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
-                        LEFT JOIN cabinets c_from ON d_from.cabinet_id = c_from.id
+                        LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
                         LEFT JOIN locations l_from ON c_from.location_id = l_from.id
                         LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
-                        LEFT JOIN cabinets c_to ON d_to.cabinet_id = c_to.id
+                        LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
                         LEFT JOIN locations l_to ON c_to.location_id = l_to.id
                         WHERE " . implode(' AND ', $where) . "
                         ORDER BY fm.moved_at DESC
@@ -4401,7 +4399,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         LEFT JOIN users u ON f.owner_id = u.id
                         LEFT JOIN users au ON f.archived_by = au.id
                         LEFT JOIN cabinets c ON f.current_cabinet_id = c.id
-                        LEFT JOIN cabinets c ON d.cabinet_id = c.id
                         LEFT JOIN entities e ON f.entity_id = e.id
                         WHERE f.is_archived = 1
                         ORDER BY f.archived_at DESC
