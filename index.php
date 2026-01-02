@@ -2926,11 +2926,15 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             </div>
                         <?php endif; ?>
 
-                        <div class="bg-white rounded-lg shadow p-6 mb-6">
-                            <div class="grid grid-cols-2 gap-6 mb-6">
-                                <div>
-                                    <h3 class="font-bold text-lg mb-4"><?= htmlspecialchars($file['name']) ?></h3>
+                        <!-- File Info & QR Code - Two Column Layout -->
+                        <div class="grid grid-cols-2 gap-6 mb-6">
+                            <!-- Left Column: File Information -->
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <h3 class="font-bold text-lg mb-4"><?= htmlspecialchars($file['name']) ?></h3>
+
+                                <div class="space-y-4">
                                     <div class="space-y-2">
+                                        <div><span class="text-gray-600">File #:</span> <span class="font-semibold"><?= htmlspecialchars($file['display_number']) ?></span></div>
                                         <div><span class="text-gray-600">UUID:</span> <span class="font-mono text-sm"><?= $file['uuid'] ?></span></div>
                                         <div><span class="text-gray-600">Owner:</span> <?= htmlspecialchars($file['owner_name'] ?? 'N/A') ?></div>
                                         <div><span class="text-gray-600">Sensitivity:</span>
@@ -2946,85 +2950,83 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             <?php endif; ?>
                                         </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <h4 class="font-bold mb-2">Location</h4>
-                                    <?php if ($file['location_name']): ?>
-                                        <div class="text-sm space-y-1">
-                                            <div>Location: <?= htmlspecialchars($file['location_name']) ?></div>
-                                            <div>Cabinet: <?= htmlspecialchars($file['cabinet_label']) ?></div>
-                                            <?php if (!empty($file['vertical_position']) && $file['vertical_position'] !== 'Not Specified'): ?>
-                                                <div>Vertical: <span class="font-medium"><?= htmlspecialchars($file['vertical_position']) ?></span></div>
-                                            <?php endif; ?>
-                                            <?php if (!empty($file['horizontal_position']) && $file['horizontal_position'] !== 'Not Specified'): ?>
-                                                <div>Position: <span class="font-medium"><?= htmlspecialchars($file['horizontal_position']) ?></span></div>
-                                            <?php endif; ?>
+
+                                    <div class="border-t pt-4">
+                                        <h4 class="font-bold mb-2">Location</h4>
+                                        <?php if ($file['location_name']): ?>
+                                            <div class="text-sm space-y-1">
+                                                <div>Location: <?= htmlspecialchars($file['location_name']) ?></div>
+                                                <div>Cabinet: <?= htmlspecialchars($file['cabinet_label']) ?></div>
+                                                <?php if (!empty($file['vertical_position']) && $file['vertical_position'] !== 'Not Specified'): ?>
+                                                    <div>Vertical: <span class="font-medium"><?= htmlspecialchars($file['vertical_position']) ?></span></div>
+                                                <?php endif; ?>
+                                                <?php if (!empty($file['horizontal_position']) && $file['horizontal_position'] !== 'Not Specified'): ?>
+                                                    <div>Position: <span class="font-medium"><?= htmlspecialchars($file['horizontal_position']) ?></span></div>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="text-gray-500 text-sm">Not assigned to a location</div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <?php if ($file['entity_name']): ?>
+                                        <div class="border-t pt-4">
+                                            <h4 class="font-bold mb-2">Entity</h4>
+                                            <div class="text-sm space-y-1">
+                                                <div><span class="text-gray-600">Name:</span> <?= htmlspecialchars($file['entity_name']) ?></div>
+                                                <?php if ($file['entity_description']): ?>
+                                                    <div><span class="text-gray-600">Description:</span> <?= htmlspecialchars($file['entity_description']) ?></div>
+                                                <?php endif; ?>
+                                                <?php if ($file['entity_contact']): ?>
+                                                    <div><span class="text-gray-600">Contact:</span> <?= htmlspecialchars($file['entity_contact']) ?></div>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
-                                    <?php else: ?>
-                                        <div class="text-gray-500">Not assigned to a location</div>
                                     <?php endif; ?>
+
+                                    <?php if ($file['description']): ?>
+                                        <div class="border-t pt-4">
+                                            <h4 class="font-bold mb-2">Description</h4>
+                                            <p class="text-gray-700 text-sm"><?= nl2br(htmlspecialchars($file['description'])) ?></p>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <?php if (!empty($fileTags)): ?>
+                                        <div class="border-t pt-4">
+                                            <h4 class="font-bold mb-2">Tags</h4>
+                                            <div class="flex flex-wrap gap-2">
+                                                <?php foreach ($fileTags as $tag): ?>
+                                                    <a href="?page=search&tag=<?= $tag['id'] ?>"
+                                                       class="inline-flex items-center gap-2 px-3 py-1 rounded hover:opacity-80"
+                                                       style="background-color: <?= htmlspecialchars($tag['color']) ?>20; border: 1px solid <?= htmlspecialchars($tag['color']) ?>">
+                                                        <div class="w-2 h-2 rounded-full" style="background-color: <?= htmlspecialchars($tag['color']) ?>"></div>
+                                                        <span style="color: <?= htmlspecialchars($tag['color']) ?>"><?= htmlspecialchars($tag['name']) ?></span>
+                                                    </a>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <div class="border-t pt-4 text-xs text-gray-500">
+                                        Created: <?= $file['created_at'] ?><br>
+                                        Updated: <?= $file['updated_at'] ?>
+                                    </div>
                                 </div>
                             </div>
 
-                            <?php if ($file['entity_name']): ?>
-                                <div class="mb-6 p-4 bg-blue-50 rounded">
-                                    <h4 class="font-bold mb-2">Entity</h4>
-                                    <div class="text-sm space-y-1">
-                                        <div><span class="text-gray-600">Name:</span> <?= htmlspecialchars($file['entity_name']) ?></div>
-                                        <?php if ($file['entity_description']): ?>
-                                            <div><span class="text-gray-600">Description:</span> <?= htmlspecialchars($file['entity_description']) ?></div>
-                                        <?php endif; ?>
-                                        <?php if ($file['entity_contact']): ?>
-                                            <div><span class="text-gray-600">Contact:</span> <?= htmlspecialchars($file['entity_contact']) ?></div>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
+                            <!-- Right Column: QR Code & Labels -->
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <h3 class="font-bold text-lg mb-4">QR Code & Labels</h3>
 
-                            <?php if ($file['description']): ?>
-                                <div class="mb-6">
-                                    <h4 class="font-bold mb-2">Description</h4>
-                                    <p class="text-gray-700"><?= nl2br(htmlspecialchars($file['description'])) ?></p>
-                                </div>
-                            <?php endif; ?>
+                                <?php
+                                $lookupURL = getBaseURL() . '?page=lookup&uuid=' . urlencode($file['uuid']);
+                                $qrCodeURL = generateQRCodeURL($lookupURL, 200);
+                                ?>
 
-                            <?php if (!empty($fileTags)): ?>
-                                <div class="mb-6">
-                                    <h4 class="font-bold mb-2">Tags</h4>
-                                    <div class="flex flex-wrap gap-2">
-                                        <?php foreach ($fileTags as $tag): ?>
-                                            <a href="?page=search&tag=<?= $tag['id'] ?>"
-                                               class="inline-flex items-center gap-2 px-3 py-1 rounded hover:opacity-80"
-                                               style="background-color: <?= htmlspecialchars($tag['color']) ?>20; border: 1px solid <?= htmlspecialchars($tag['color']) ?>">
-                                                <div class="w-2 h-2 rounded-full" style="background-color: <?= htmlspecialchars($tag['color']) ?>"></div>
-                                                <span style="color: <?= htmlspecialchars($tag['color']) ?>"><?= htmlspecialchars($tag['name']) ?></span>
-                                            </a>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </div>
-                            <?php endif; ?>
-
-                            <div class="text-sm text-gray-500">
-                                Created: <?= $file['created_at'] ?> | Updated: <?= $file['updated_at'] ?>
-                            </div>
-                        </div>
-
-                        <!-- QR CODE SECTION -->
-                        <div class="bg-white rounded-lg shadow p-6 mb-6">
-                            <h3 class="font-bold text-lg mb-4">QR Code & Labels</h3>
-                            <div class="grid grid-cols-2 gap-6">
-                                <div>
-                                    <h4 class="font-semibold mb-3">File QR Code</h4>
-                                    <p class="text-sm text-gray-600 mb-4">Scan this code to quickly look up this file</p>
-                                    <?php
-                                    $lookupURL = getBaseURL() . '?page=lookup&uuid=' . urlencode($file['uuid']);
-                                    $qrCodeURL = generateQRCodeURL($lookupURL, 200);
-                                    ?>
-                                    <div class="mb-4 p-4 bg-gray-50 rounded text-center">
-                                        <img src="<?= $qrCodeURL ?>" alt="QR Code" class="mx-auto mb-2" style="width: 200px; height: 200px;">
-                                        <div class="text-xs text-gray-500 break-all"><?= htmlspecialchars($file['uuid']) ?></div>
-                                    </div>
-                                    <div class="flex gap-2">
+                                <div class="mb-6 p-4 bg-gray-50 rounded text-center">
+                                    <img src="<?= $qrCodeURL ?>" alt="QR Code" class="mx-auto mb-3" style="width: 200px; height: 200px;">
+                                    <p class="text-xs text-gray-600 mb-3">Scan to quickly look up this file</p>
+                                    <div class="flex gap-2 justify-center">
                                         <a href="?page=files&action=print_label&id=<?= $file['id'] ?>" target="_blank"
                                            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm flex items-center gap-2">
                                             <span>🖨️</span>
@@ -3037,24 +3039,16 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         </button>
                                     </div>
                                 </div>
-                                <div>
-                                    <h4 class="font-semibold mb-3">Quick Access</h4>
-                                    <div class="space-y-3">
-                                        <div class="p-3 bg-gray-50 rounded">
-                                            <div class="text-xs text-gray-600 mb-1">Direct Lookup URL:</div>
-                                            <div class="text-xs font-mono bg-white p-2 rounded border break-all">
-                                                <?= htmlspecialchars($lookupURL) ?>
-                                            </div>
+
+                                <div class="space-y-3">
+                                    <div class="p-3 bg-gray-50 rounded">
+                                        <div class="text-xs text-gray-600 mb-1">Direct Lookup URL:</div>
+                                        <div class="text-xs font-mono bg-white p-2 rounded border break-all">
+                                            <?= htmlspecialchars($lookupURL) ?>
                                         </div>
-                                        <div class="p-3 bg-gray-50 rounded">
-                                            <div class="text-xs text-gray-600 mb-1">File Number:</div>
-                                            <div class="text-2xl font-bold text-blue-600">
-                                                #<?= htmlspecialchars($file['display_number']) ?>
-                                            </div>
-                                        </div>
-                                        <div class="text-xs text-gray-600">
-                                            Tip: Use the mobile scanner or lookup page to find files quickly by scanning their QR codes.
-                                        </div>
+                                    </div>
+                                    <div class="text-xs text-gray-600">
+                                        💡 Tip: Use the mobile scanner or lookup page to find files quickly by scanning their QR codes.
                                     </div>
                                 </div>
                             </div>
