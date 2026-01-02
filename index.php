@@ -64,6 +64,17 @@ function timeAgo($datetime) {
     return date('M j, Y', $timestamp);
 }
 
+// Helper function to get sensitivity emoji
+function getSensitivityEmoji($sensitivity) {
+    $emojis = [
+        'public' => '🟢',
+        'internal' => '🟡',
+        'confidential' => '🟠',
+        'restricted' => '🔴'
+    ];
+    return $emojis[$sensitivity] ?? '⚪';
+}
+
 // Helper function to generate QR Code URL
 function generateQRCodeURL($data, $size = 200) {
     return "https://api.qrserver.com/v1/create-qr-code/?size={$size}x{$size}&data=" . urlencode($data);
@@ -1068,7 +1079,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     <div class="label-number">FILE #<?= htmlspecialchars($file['display_number']) ?></div>
                     <div class="label-name"><?= htmlspecialchars($file['name']) ?></div>
                     <span class="label-sensitivity sensitivity-<?= $file['sensitivity'] ?>">
-                        <?= strtoupper($file['sensitivity']) ?>
+                        <?= getSensitivityEmoji($file['sensitivity']) ?> <?= strtoupper($file['sensitivity']) ?>
                     </span>
                 </div>
             </div>
@@ -2624,10 +2635,10 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             <div class="mb-4">
                                 <label class="block text-gray-700 mb-2">Sensitivity Level</label>
                                 <select name="sensitivity" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <option value="public">Public</option>
-                                    <option value="internal" selected>Internal</option>
-                                    <option value="confidential">Confidential</option>
-                                    <option value="restricted">Restricted</option>
+                                    <option value="public">🟢 Public</option>
+                                    <option value="internal" selected>🟡 Internal</option>
+                                    <option value="confidential">🟠 Confidential</option>
+                                    <option value="restricted">🔴 Restricted</option>
                                 </select>
                             </div>
                             <div class="mb-4">
@@ -2916,7 +2927,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         <div><span class="text-gray-600">Owner:</span> <?= htmlspecialchars($file['owner_name'] ?? 'N/A') ?></div>
                                         <div><span class="text-gray-600">Sensitivity:</span>
                                             <span class="px-2 py-1 text-xs rounded <?= $file['sensitivity'] === 'confidential' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800' ?>">
-                                                <?= ucfirst($file['sensitivity']) ?>
+                                                <?= getSensitivityEmoji($file['sensitivity']) ?> <?= ucfirst($file['sensitivity']) ?>
                                             </span>
                                         </div>
                                         <div><span class="text-gray-600">Status:</span>
@@ -3894,7 +3905,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     <div class="label-number">FILE #<?= htmlspecialchars($file['display_number']) ?></div>
                                     <div class="label-name"><?= htmlspecialchars($file['name']) ?></div>
                                     <span class="label-sensitivity sensitivity-<?= $file['sensitivity'] ?>">
-                                        <?= strtoupper($file['sensitivity']) ?>
+                                        <?= getSensitivityEmoji($file['sensitivity']) ?> <?= strtoupper($file['sensitivity']) ?>
                                     </span>
                                 </div>
                             </div>
@@ -3942,10 +3953,10 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <div class="mb-4">
                                     <label class="block text-gray-700 mb-2">Sensitivity Level</label>
                                     <select name="sensitivity" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="public" <?= $file['sensitivity'] === 'public' ? 'selected' : '' ?>>Public</option>
-                                        <option value="internal" <?= $file['sensitivity'] === 'internal' ? 'selected' : '' ?>>Internal</option>
-                                        <option value="confidential" <?= $file['sensitivity'] === 'confidential' ? 'selected' : '' ?>>Confidential</option>
-                                        <option value="restricted" <?= $file['sensitivity'] === 'restricted' ? 'selected' : '' ?>>Restricted</option>
+                                        <option value="public" <?= $file['sensitivity'] === 'public' ? 'selected' : '' ?>>🟢 Public</option>
+                                        <option value="internal" <?= $file['sensitivity'] === 'internal' ? 'selected' : '' ?>>🟡 Internal</option>
+                                        <option value="confidential" <?= $file['sensitivity'] === 'confidential' ? 'selected' : '' ?>>🟠 Confidential</option>
+                                        <option value="restricted" <?= $file['sensitivity'] === 'restricted' ? 'selected' : '' ?>>🔴 Restricted</option>
                                     </select>
                                 </div>
                                 <div class="mb-4">
@@ -5420,7 +5431,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             <span class="font-medium">#<?= htmlspecialchars($file['display_number']) ?></span>
                                             <span class="text-sm text-gray-600 truncate"><?= htmlspecialchars($file['name']) ?></span>
                                             <span class="text-xs px-2 py-1 rounded bg-gray-100">
-                                                <?= ucfirst($file['sensitivity']) ?>
+                                                <?= getSensitivityEmoji($file['sensitivity']) ?> <?= ucfirst($file['sensitivity']) ?>
                                             </span>
                                         </label>
                                     <?php endforeach; ?>
@@ -5637,7 +5648,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                         <td><?= htmlspecialchars($f['vertical_position']) ?> / <?= htmlspecialchars($f['horizontal_position']) ?></td>
                                                         <td><?= htmlspecialchars($f['owner_name']) ?></td>
                                                         <td><?= htmlspecialchars($f['entity_name'] ?: 'N/A') ?></td>
-                                                        <td><span class="px-2 py-1 text-xs rounded <?= $f['sensitivity'] === 'public' ? 'bg-green-100 text-green-800' : ($f['sensitivity'] === 'confidential' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800') ?>"><?= ucfirst($f['sensitivity']) ?></span></td>
+                                                        <td><span class="px-2 py-1 text-xs rounded <?= $f['sensitivity'] === 'public' ? 'bg-green-100 text-green-800' : ($f['sensitivity'] === 'confidential' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800') ?>"><?= getSensitivityEmoji($f['sensitivity']) ?> <?= ucfirst($f['sensitivity']) ?></span></td>
                                                     </tr>
                                                 <?php endforeach; ?>
                                             </tbody>
@@ -5679,7 +5690,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                     <td><?= htmlspecialchars($f['name']) ?></td>
                                                     <td><?= htmlspecialchars($f['owner_name']) ?></td>
                                                     <td><span class="px-2 py-1 text-xs rounded <?= $f['is_archived'] ? 'bg-yellow-100 text-yellow-800' : ($f['is_checked_out'] ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800') ?>"><?= $status ?></span></td>
-                                                    <td><span class="px-2 py-1 text-xs rounded <?= $f['sensitivity'] === 'public' ? 'bg-green-100 text-green-800' : ($f['sensitivity'] === 'confidential' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800') ?>"><?= ucfirst($f['sensitivity']) ?></span></td>
+                                                    <td><span class="px-2 py-1 text-xs rounded <?= $f['sensitivity'] === 'public' ? 'bg-green-100 text-green-800' : ($f['sensitivity'] === 'confidential' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800') ?>"><?= getSensitivityEmoji($f['sensitivity']) ?> <?= ucfirst($f['sensitivity']) ?></span></td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         </tbody>
