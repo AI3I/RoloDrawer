@@ -2926,6 +2926,21 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             </div>
                         <?php endif; ?>
 
+                        <!-- Quick Actions Bar -->
+                        <?php if (!$file['is_archived'] && !$file['is_destroyed']): ?>
+                            <div class="flex justify-end gap-2 mb-4">
+                                <?php if (in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
+                                    <button onclick="openArchiveModal(<?= $file['id'] ?>, '<?= htmlspecialchars($file['display_number'], ENT_QUOTES) ?>')"
+                                            class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 font-medium flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+                                        </svg>
+                                        Archive File
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+
                         <!-- File Info & QR Code - Two Column Layout -->
                         <div class="grid grid-cols-2 gap-6 mb-6">
                             <!-- Left Column: File Information -->
@@ -3054,7 +3069,10 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             </div>
                         </div>
 
-                        <!-- CHECKOUT/CHECKIN SECTION -->
+                        <!-- CHECKOUT & MOVE - Two Column Layout -->
+                        <div class="grid grid-cols-2 gap-6 mb-6">
+                            <!-- Left Column: CHECKOUT/CHECKIN SECTION -->
+                            <div>
                         <?php if (!$file['is_checked_out']): ?>
                             <!-- File is available - show checkout form -->
                             <div class="bg-white rounded-lg shadow p-6 mb-6">
@@ -3149,6 +3167,10 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <?php endif; ?>
                             </div>
                         <?php endif; ?>
+                            </div>
+
+                            <!-- Right Column: MOVE FILE SECTION -->
+                            <div>
 
                         <!-- CHECKOUT HISTORY -->
                         <?php
@@ -3502,6 +3524,8 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <?php endif; ?>
                             </div>
                         <?php endif; ?>
+                            </div>
+                        </div>
 
                         <!-- MOVEMENT HISTORY -->
                         <?php
@@ -3584,33 +3608,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             </div>
                         <?php endif; ?>
 
-                        <?php if (empty($file['is_archived']) && in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
-                            <!-- Archive File Section -->
-                            <div class="bg-white rounded-lg shadow p-6 mb-6" x-data="{ showArchiveForm: false }">
-                                <h3 class="font-bold text-lg mb-4 text-yellow-700">Archive File</h3>
-                                <p class="text-sm text-gray-600 mb-4">Archiving a file removes it from active file listings but preserves all data for future reference.</p>
-                                
-                                <button @click="showArchiveForm = !showArchiveForm" 
-                                        class="bg-yellow-500 text-white px-6 py-2 rounded hover:bg-yellow-600 font-medium"
-                                        x-text="showArchiveForm ? 'Cancel' : 'Archive This File'">
-                                    Archive This File
-                                </button>
-
-                                <div x-show="showArchiveForm" x-cloak class="mt-4 p-4 bg-yellow-50 rounded border border-yellow-200">
-                                    <form method="POST" action="?page=files&action=archive&id=<?= $file['id'] ?>" onsubmit="return confirm('Are you sure you want to archive this file?');">
-                                        <div class="mb-4">
-                                            <label class="block text-gray-700 mb-2 font-medium">Archive Reason (Required) *</label>
-                                            <textarea name="archived_reason" required rows="4" 
-                                                      placeholder="Example: Project completed, Retention period expired, Superseded by newer version, etc."
-                                                      class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-yellow-500"></textarea>
-                                        </div>
-                                        <button type="submit" class="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700 font-medium">
-                                            Confirm Archive
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
-                        <?php endif; ?>
 
                         <?php if ($file['is_archived'] && !$file['is_destroyed'] && $_SESSION['user_role'] === 'admin'): ?>
                             <!-- Destruction Section (Admin Only, Archived Files Only) -->
