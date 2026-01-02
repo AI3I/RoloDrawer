@@ -514,7 +514,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = "Failed to create backup";
                 $messageType = "error";
             }
-            header("Location: ?page=settings&message=" . urlencode($message) . "&type=" . $messageType);
+            header("Location: ?page=settings&message=" . urlencode($message) . "&messageType=" . $messageType);
             exit;
         }
     }
@@ -560,7 +560,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = "No file uploaded or upload error";
                 $messageType = "error";
             }
-            header("Location: ?page=settings&message=" . urlencode($message) . "&type=" . $messageType);
+            header("Location: ?page=settings&message=" . urlencode($message) . "&messageType=" . $messageType);
             exit;
         }
     }
@@ -1073,7 +1073,7 @@ if ($page === 'settings' && $action === 'backup_delete' && isset($_GET['file']))
             $message = "Backup file not found";
             $messageType = "error";
         }
-        header("Location: ?page=settings&message=" . urlencode($message) . "&type=" . $messageType);
+        header("Location: ?page=settings&message=" . urlencode($message) . "&messageType=" . $messageType);
         exit;
     }
 }
@@ -5917,12 +5917,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
 
                 <?php elseif ($page === 'settings'): ?>
                     <h2 class="text-3xl font-bold mb-6">System Settings</h2>
-
-                    <?php if (isset($_GET['message'])): ?>
-                        <div class="mb-6 p-4 rounded <?= ($_GET['type'] ?? 'success') === 'error' ? 'bg-red-100 border border-red-400 text-red-700' : 'bg-green-100 border border-green-400 text-green-700' ?>">
-                            <?= htmlspecialchars($_GET['message']) ?>
-                        </div>
-                    <?php endif; ?>
 
                     <!-- Backup & Restore Section -->
                     <div class="bg-white rounded-lg shadow p-6 mb-6">
