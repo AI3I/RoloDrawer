@@ -1,0 +1,46 @@
+# RoloDrawer .gitignore
+
+# Database files
+storage/database/*.sqlite
+storage/database/*.sqlite-*
+
+# Configuration (use config.example.php as template)
+config.php
+
+# User uploaded files and data
+storage/uploads/*
+storage/logs/*
+storage/backups/*
+
+# Keep directory structure but ignore contents
+!storage/database/.gitkeep
+!storage/uploads/.gitkeep
+!storage/logs/.gitkeep
+!storage/backups/.gitkeep
+
+# Temporary and cache files
+*.tmp
+*.cache
+.DS_Store
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# PHP temporary files
+*.log
+error_log
+
+# Setup and migration scripts (optional - remove if you want to include them)
+setup_production.php
+migrate_*.php
+
+# OS files
+.DS_Store
+._.DS_Store
+**/.DS_Store
+**/._.DS_Store

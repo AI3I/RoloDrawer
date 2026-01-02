@@ -1,0 +1,360 @@
+# RoloDrawer Changelog
+
+All notable changes to RoloDrawer will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [1.0.0] - 2026-01-15
+
+### Initial Release
+
+The first production-ready release of RoloDrawer, a comprehensive web-based filing cabinet management system.
+
+### Added
+
+#### Core Features
+- **File Management System**
+  - Create, read, update, and archive physical file records
+  - Auto-incrementing file numbers with UUID backend tracking
+  - File metadata including name, description, owner, and sensitivity level
+  - Four sensitivity levels: Public, Internal, Confidential, Restricted
+  - File status tracking (In Drawer, Checked Out, Archived, Destroyed)
+  - Complete file history and audit trail
+  - Bulk file operations (edit, move, archive)
+
+#### Location Management
+- **Physical Location Tracking**
+  - Multi-level location hierarchy (Location > Cabinet > Drawer)
+  - Location details with address and contact information
+  - Cabinet management with customizable drawer configurations
+  - Drawer labeling options (letters, numbers, or custom)
+  - Visual location browser with tree view
+  - Capacity tracking and warnings
+
+#### Checkout System
+- **File Checkout/Checkin Workflow**
+  - Checkout files with expected return dates
+  - Purpose and notes tracking for checkouts
+  - Email reminders for upcoming due dates
+  - Overdue file notifications
+  - Checkout history for each file
+  - "My Checkouts" dashboard for users
+  - Quick return functionality
+
+#### Search and Discovery
+- **Advanced Search**
+  - Quick search across file numbers, names, descriptions
+  - Advanced search with multiple filter criteria
+  - Search by location, cabinet, drawer
+  - Filter by owner, sensitivity, status
+  - Date range filtering
+  - Tag-based search
+  - Entity-based search
+  - Saved searches for frequently used queries
+  - Sort options (by number, name, date, location)
+
+#### Tags and Cross-Referencing
+- **Tag System**
+  - Unlimited tags per file
+  - Tag autocomplete
+  - Tag categories for organization
+  - Tag cloud visualization
+  - Browse files by tag
+  - Bulk tagging operations
+  - Tag merging for standardization
+  - Tag usage statistics
+
+- **File Cross-Referencing**
+  - Link related files together
+  - Relationship types (Related to, Supersedes, Referenced in)
+  - Bidirectional relationships
+  - Visual relationship display
+  - Quick navigation between related files
+
+#### Entity Management
+- **Entity System**
+  - Create entities for vendors, clients, contractors, projects, etc.
+  - Entity types: Vendor, Client, Contractor, Project, Department, Property, Other
+  - Contact information tracking
+  - Entity hierarchy (parent-child relationships)
+  - Associate multiple files with entities
+  - Browse files by entity
+  - Entity merge functionality
+  - Entity status tracking (Active, Inactive, Archived)
+
+#### QR Code and Label Printing
+- **Label Generation**
+  - QR code generation for each file
+  - Barcode generation (Code 128, Code 39)
+  - Individual label printing
+  - Batch label printing with templates
+  - Avery label template support (5160, 5161, 5162)
+  - Customizable label content (name, location, sensitivity)
+  - Printable PDF generation
+  - QR code scanning for quick file lookup
+  - Mobile-friendly QR scanner interface
+
+#### Archive and Destruction
+- **Archive Workflow**
+  - Soft archive with reason tracking
+  - Archive reasons (Project completed, Retention expired, Superseded, Other)
+  - Archived files remain searchable with filter
+  - Un-archive functionality
+  - Bulk archive operations
+  - Automatic archiving based on retention rules
+
+- **Destruction Workflow**
+  - Formal destruction request system
+  - Admin approval required for destruction
+  - Destruction methods tracking (Shredding, Incineration, Pulping, etc.)
+  - Destruction certification
+  - Permanent audit log of destroyed files
+  - Witness tracking for sensitive destructions
+  - Bulk destruction support
+  - Compliance reporting
+
+#### Reporting and Analytics
+- **Built-in Reports**
+  - Inventory Report (all files and locations)
+  - Checkout Report (currently checked out files)
+  - Overdue Report (files past due date)
+  - Movement History Report
+  - Activity Report (all user actions)
+  - Files by Entity Report
+  - Sensitivity Classification Report
+  - Archive Report
+  - Destruction Log Report
+  - Retention Compliance Report
+
+- **Report Features**
+  - Customizable filters and date ranges
+  - Export to PDF, Excel, CSV
+  - Scheduled report generation
+  - Email delivery of reports
+  - Visual charts and graphs
+  - Print-friendly formats
+
+#### User Management
+- **Authentication and Authorization**
+  - Secure user registration and login
+  - Three user roles: Viewer, User, Administrator
+  - Role-based permissions
+  - Password strength requirements
+  - Password expiration policies
+  - Account activation/deactivation
+  - Failed login attempt tracking and lockout
+  - Password reset via email
+  - "Remember me" functionality
+  - Session timeout for security
+
+- **User Administration**
+  - Create, edit, delete user accounts
+  - Bulk user import from CSV
+  - User profile management
+  - Department assignment
+  - User activity tracking
+  - Email notifications to users
+
+#### Security Features
+- **Data Protection**
+  - Role-based access control
+  - Sensitivity-based file restrictions
+  - Secure session management
+  - HTTPS enforcement
+  - Security headers (X-Frame-Options, X-XSS-Protection, etc.)
+  - CSRF protection
+  - SQL injection prevention (prepared statements)
+  - XSS protection (input sanitization)
+  - Password hashing (bcrypt)
+  - Optional file upload encryption
+  - Optional database encryption
+
+- **Audit Trail**
+  - Complete action logging
+  - User login/logout tracking
+  - File creation, modification, deletion logging
+  - Movement history
+  - Checkout/return logging
+  - Permission change tracking
+  - Configuration change logging
+  - Exportable audit logs
+  - Configurable log retention
+
+#### System Administration
+- **Admin Dashboard**
+  - System health monitoring
+  - Quick statistics overview
+  - Recent activity feed
+  - Pending actions notifications
+  - User management interface
+  - System settings configuration
+
+- **Maintenance Tools**
+  - Database backup and restore
+  - Manual and automated backup scheduling
+  - Database optimization tools
+  - Cache management
+  - System update checker
+  - Error log viewer
+  - Performance monitoring
+  - Slow query detection
+
+- **Configuration**
+  - Customizable system settings
+  - Email configuration (SMTP)
+  - Notification settings
+  - Retention policy management
+  - Legal hold management
+  - Custom fields for files
+  - API access configuration
+  - Webhook configuration
+
+#### Integration and API
+- **API Access**
+  - RESTful API for external integrations
+  - API key authentication
+  - Rate limiting
+  - API usage monitoring
+  - Webhook support for events
+  - JSON responses
+
+#### User Interface
+- **Modern, Responsive Design**
+  - Mobile-friendly responsive layout
+  - Clean, intuitive interface
+  - Dashboard with customizable widgets
+  - Breadcrumb navigation
+  - Contextual help system
+  - Keyboard shortcuts
+  - Dark/light theme support
+  - Accessibility features (WCAG 2.1 compliant)
+  - Browser support: Chrome, Firefox, Safari, Edge (latest versions)
+
+- **User Experience Enhancements**
+  - Auto-save for forms
+  - Drag-and-drop file uploads
+  - Inline editing
+  - Real-time search suggestions
+  - Confirmation dialogs for destructive actions
+  - Toast notifications for actions
+  - Progress indicators for long operations
+  - Pagination for large datasets
+
+#### Database Support
+- **Multiple Database Options**
+  - SQLite (default for easy setup)
+  - MySQL 5.7+
+  - PostgreSQL 12+
+  - Database migrations for version updates
+  - Automatic schema creation
+  - Sample data loader
+
+#### Deployment
+- **Flexible Hosting**
+  - Works on shared hosting (Plesk, cPanel)
+  - VPS/dedicated server support
+  - Apache and Nginx support
+  - Docker container support
+  - URL rewriting for clean URLs
+  - .htaccess included for Apache
+  - nginx.conf examples provided
+
+#### Documentation
+- **Comprehensive Documentation**
+  - Installation Guide (INSTALLATION.md)
+  - User Guide (USER_GUIDE.md)
+  - Administrator Guide (ADMIN_GUIDE.md)
+  - This Changelog
+  - Setup Wizard for first-time installation
+  - In-app help system
+  - Video tutorials (planned)
+  - API documentation (planned)
+
+### Technical Specifications
+
+#### System Requirements
+- PHP 7.4 or higher (8.0+ recommended)
+- Web server (Apache 2.4+ or Nginx 1.18+)
+- Database (SQLite 3.8+ / MySQL 5.7+ / PostgreSQL 12+)
+- 512MB RAM minimum (1GB+ recommended)
+- 100MB disk space + storage for uploads
+
+#### PHP Extensions Required
+- PDO (with appropriate database driver)
+- mbstring
+- OpenSSL
+- JSON
+- GD or Imagick
+- Session support
+- cURL (optional)
+
+#### Security
+- Follows OWASP security best practices
+- Regular security updates planned
+- Vulnerability reporting process
+- Security advisory notifications
+
+### Known Limitations
+
+- Maximum file upload size limited by PHP configuration
+- SQLite recommended for <10,000 files (use MySQL/PostgreSQL for larger installations)
+- QR code scanning requires HTTPS for browser camera access
+- Email notifications require SMTP server configuration
+- Report generation for very large datasets may be slow
+
+### Roadmap for Future Versions
+
+#### Planned for v1.1 (Q2 2026)
+- Advanced barcode scanner integration
+- Mobile native apps (iOS/Android)
+- Advanced reporting with custom report builder
+- Workflow automation rules
+- Document scanning integration
+- Email-to-file functionality
+
+#### Planned for v1.2 (Q3 2026)
+- Multi-language support (i18n)
+- LDAP/Active Directory integration
+- SSO support (SAML, OAuth)
+- Advanced permissions (field-level)
+- File versioning
+- Document preview
+
+#### Under Consideration
+- Integration with document management systems
+- Cloud storage backend support (S3, Azure Blob)
+- Electronic signature integration
+- Retention policy automation
+- Machine learning for auto-tagging
+- Blockchain for immutable audit trail
+
+### Acknowledgments
+
+RoloDrawer was designed to solve the real-world problem of tracking physical file folders in organizations. Thank you to all beta testers and early adopters who provided valuable feedback.
+
+### License
+
+Copyright (c) 2026 RoloDrawer Development Team. All rights reserved.
+
+See LICENSE.txt for licensing information.
+
+### Support
+
+- Documentation: https://docs.rolodrawer.com
+- Issue Tracker: https://github.com/yourusername/rolodrawer/issues
+- Email Support: support@example.com
+- Community Forum: https://forum.example.com/rolodrawer
+
+---
+
+## Version History
+
+- **[1.0.0] - 2026-01-15**: Initial release
+
+---
+
+*For detailed information about using RoloDrawer, see USER_GUIDE.md and ADMIN_GUIDE.md*
+*For installation instructions, see INSTALLATION.md*
