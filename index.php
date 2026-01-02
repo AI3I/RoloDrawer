@@ -3062,6 +3062,9 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             <!-- File is available - show checkout form -->
                             <div class="bg-white rounded-lg shadow p-6 mb-6">
                                 <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                    </svg>
                                     <span>Check Out File</span>
                                     <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Available</span>
                                 </h3>
@@ -3099,7 +3102,12 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <?php if (empty($file['is_archived']) && in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
                                     <!-- Archive Section within same box -->
                                     <div class="mt-6 pt-6 border-t border-gray-200">
-                                        <h3 class="font-bold text-lg mb-4 text-yellow-700">Archive File</h3>
+                                        <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+                                            <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+                                            </svg>
+                                            <span>Archive File</span>
+                                        </h3>
                                         <p class="text-sm text-gray-600 mb-4">
                                             Archiving removes this file from active listings while preserving all data for future reference.
                                         </p>
