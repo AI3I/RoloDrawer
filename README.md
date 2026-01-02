@@ -12,7 +12,7 @@ RoloDrawer is a comprehensive web-based document tracking and management system 
 
 ### Core Functionality
 - **📄 File Management** - Track files with UUID backend + custom display numbers
-- **📍 Location Hierarchy** - Organize by Location → Cabinet → Drawer → File  
+- **📍 Location Hierarchy** - Organize by Location → Cabinet → Drawer → File
 - **🔍 Advanced Search** - Full-text search with filters (tags, entity, sensitivity)
 - **🏷️ Tag System** - Color-coded tags for cross-referencing
 - **🏢 Entity Management** - Associate files with organizations/companies
@@ -42,29 +42,29 @@ RoloDrawer is a comprehensive web-based document tracking and management system 
 ### Installation
 
 1. **Clone or download the repository**
-   \`\`\`bash
-   git clone https://github.com/yourusername/rolodrawer.git
-   cd rolodrawer
-   \`\`\`
+   ```bash
+   git clone https://github.com/AI3I/RoloDrawer.git
+   cd RoloDrawer
+   ```
 
 2. **Set up file permissions**
-   \`\`\`bash
+   ```bash
    chmod 755 index.php
    chmod -R 777 storage/
-   \`\`\`
+   ```
 
 3. **Access in browser**
-   \`\`\`
+   ```
    http://yourdomain.com/rolodrawer/
-   \`\`\`
+   ```
 
 The database will be created automatically on first access!
 
 ### First-Time Login
-\`\`\`
+```
 Username: admin
 Password: RoloDrawer2026!
-\`\`\`
+```
 
 ⚠️ **IMPORTANT**: Change the default password immediately after first login!
 
@@ -72,7 +72,7 @@ Password: RoloDrawer2026!
 
 - **[INSTALLATION.md](INSTALLATION.md)** - Detailed installation guide for various platforms
 - **[USER_GUIDE.md](USER_GUIDE.md)** - Complete user documentation
-- **[ADMIN_GUIDE.md](ADMIN_GUIDE.md)** - Administrator guide  
+- **[ADMIN_GUIDE.md](ADMIN_GUIDE.md)** - Administrator guide
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and roadmap
 
 ## 🔐 Security Features
@@ -88,13 +88,29 @@ Password: RoloDrawer2026!
 
 Load sample data to try RoloDrawer:
 
-\`\`\`bash
+```bash
 sqlite3 storage/database/rolodrawer.sqlite < sample_data.sql
-\`\`\`
+```
+
+Sample includes:
+- 5 locations with complete hierarchy
+- 8 entities (companies/departments)
+- 12 color-coded tags
+- 10 realistic sample files
+- 4 demo users (all password: RoloDrawer2026!)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Issues**: Report bugs via [GitHub Issues](https://github.com/AI3I/RoloDrawer/issues)
+- **Documentation**: See the complete guides in this repository
 
 ---
 
