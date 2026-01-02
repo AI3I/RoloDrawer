@@ -2516,25 +2516,63 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     <?php endif; ?>
                                 </div>
                             </div>
-                            <div class="mb-6">
-                                <label class="block text-gray-700 mb-2">Assign to Cabinet (optional)</label>
-                                <select name="cabinet_id" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <option value="">Not assigned</option>
-                                    <?php
-                                    $cabinets = $db->fetchAll("
-                                        SELECT c.id, c.label as cabinet_label, l.name as location_name
-                                        FROM cabinets c
-                                        LEFT JOIN locations l ON c.location_id = l.id
-                                        ORDER BY l.name, c.label
-                                    ");
-                                    foreach ($cabinets as $cabinet):
-                                    ?>
-                                        <option value="<?= $cabinet['id'] ?>">
-                                            <?= htmlspecialchars(($cabinet['location_name'] ?? 'No Location') . ' > Cabinet ' . $cabinet['cabinet_label']) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
+                            <?php
+                            // Get all locations and cabinets for dropdowns
+                            $locations = $db->fetchAll("SELECT * FROM locations ORDER BY name");
+                            $cabinets = $db->fetchAll("
+                                SELECT c.id, c.label as cabinet_label, c.location_id, l.name as location_name
+                                FROM cabinets c
+                                LEFT JOIN locations l ON c.location_id = l.id
+                                ORDER BY l.name, c.label
+                            ");
+                            ?>
+                            <div class="grid grid-cols-2 gap-4 mb-6">
+                                <div>
+                                    <label class="block text-gray-700 mb-2">Assign to Location (optional)</label>
+                                    <select id="location_filter_create" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="">Select a location...</option>
+                                        <?php foreach ($locations as $loc): ?>
+                                            <option value="<?= $loc['id'] ?>"><?= htmlspecialchars($loc['name']) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">Assign to Cabinet (optional)</label>
+                                    <select name="cabinet_id" id="cabinet_select_create" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="">Not assigned</option>
+                                        <?php foreach ($cabinets as $cabinet): ?>
+                                            <option value="<?= $cabinet['id'] ?>" data-location="<?= $cabinet['location_id'] ?? '' ?>">
+                                                Cabinet <?= htmlspecialchars($cabinet['cabinet_label']) ?><?= $cabinet['location_name'] ? ' (' . htmlspecialchars($cabinet['location_name']) . ')' : '' ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
                             </div>
+                            <script>
+                            document.getElementById('location_filter_create').addEventListener('change', function() {
+                                const locationId = this.value;
+                                const cabinetSelect = document.getElementById('cabinet_select_create');
+                                const options = cabinetSelect.querySelectorAll('option');
+
+                                options.forEach(option => {
+                                    if (option.value === '') {
+                                        option.style.display = '';
+                                        return;
+                                    }
+
+                                    if (!locationId || option.dataset.location === locationId) {
+                                        option.style.display = '';
+                                    } else {
+                                        option.style.display = 'none';
+                                    }
+                                });
+
+                                // Reset cabinet selection if current selection is now hidden
+                                if (cabinetSelect.selectedOptions[0] && cabinetSelect.selectedOptions[0].style.display === 'none') {
+                                    cabinetSelect.value = '';
+                                }
+                            });
+                            </script>
                             <div class="grid grid-cols-2 gap-4 mb-6">
                                 <div>
                                     <label class="block text-gray-700 mb-2">Vertical Position</label>
@@ -3605,25 +3643,70 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         <?php endif; ?>
                                     </div>
                                 </div>
-                                <div class="mb-6">
-                                    <label class="block text-gray-700 mb-2">Assign to Cabinet</label>
-                                    <select name="cabinet_id" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="">Not assigned</option>
-                                        <?php
-                                        $cabinets = $db->fetchAll("
-                                            SELECT c.id, c.label as cabinet_label, l.name as location_name
-                                            FROM cabinets c
-                                            LEFT JOIN locations l ON c.location_id = l.id
-                                            ORDER BY l.name, c.label
-                                        ");
-                                        foreach ($cabinets as $cabinet):
-                                        ?>
-                                            <option value="<?= $cabinet['id'] ?>" <?= $file['current_cabinet_id'] == $cabinet['id'] ? 'selected' : '' ?>>
-                                                <?= htmlspecialchars(($cabinet['location_name'] ?? 'No Location') . ' > Cabinet ' . $cabinet['cabinet_label']) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                <?php
+                                // Get all locations and cabinets for dropdowns
+                                $locations = $db->fetchAll("SELECT * FROM locations ORDER BY name");
+                                $cabinets = $db->fetchAll("
+                                    SELECT c.id, c.label as cabinet_label, c.location_id, l.name as location_name
+                                    FROM cabinets c
+                                    LEFT JOIN locations l ON c.location_id = l.id
+                                    ORDER BY l.name, c.label
+                                ");
+                                // Get the current file's cabinet location
+                                $currentCabinet = $db->fetchOne("SELECT c.location_id FROM cabinets c WHERE c.id = ?", [$file['current_cabinet_id']]);
+                                $currentLocationId = $currentCabinet['location_id'] ?? null;
+                                ?>
+                                <div class="grid grid-cols-2 gap-4 mb-6">
+                                    <div>
+                                        <label class="block text-gray-700 mb-2">Assign to Location (optional)</label>
+                                        <select id="location_filter_edit" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="">Select a location...</option>
+                                            <?php foreach ($locations as $loc): ?>
+                                                <option value="<?= $loc['id'] ?>" <?= $currentLocationId == $loc['id'] ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($loc['name']) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-700 mb-2">Assign to Cabinet (optional)</label>
+                                        <select name="cabinet_id" id="cabinet_select_edit" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="">Not assigned</option>
+                                            <?php foreach ($cabinets as $cabinet): ?>
+                                                <option value="<?= $cabinet['id'] ?>"
+                                                        data-location="<?= $cabinet['location_id'] ?? '' ?>"
+                                                        <?= $file['current_cabinet_id'] == $cabinet['id'] ? 'selected' : '' ?>>
+                                                    Cabinet <?= htmlspecialchars($cabinet['cabinet_label']) ?><?= $cabinet['location_name'] ? ' (' . htmlspecialchars($cabinet['location_name']) . ')' : '' ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
                                 </div>
+                                <script>
+                                document.getElementById('location_filter_edit').addEventListener('change', function() {
+                                    const locationId = this.value;
+                                    const cabinetSelect = document.getElementById('cabinet_select_edit');
+                                    const options = cabinetSelect.querySelectorAll('option');
+
+                                    options.forEach(option => {
+                                        if (option.value === '') {
+                                            option.style.display = '';
+                                            return;
+                                        }
+
+                                        if (!locationId || option.dataset.location === locationId) {
+                                            option.style.display = '';
+                                        } else {
+                                            option.style.display = 'none';
+                                        }
+                                    });
+
+                                    // Reset cabinet selection if current selection is now hidden
+                                    if (cabinetSelect.selectedOptions[0] && cabinetSelect.selectedOptions[0].style.display === 'none') {
+                                        cabinetSelect.value = '';
+                                    }
+                                });
+                                </script>
                                 <div class="grid grid-cols-2 gap-4 mb-6">
                                     <div>
                                         <label class="block text-gray-700 mb-2">Vertical Position</label>
