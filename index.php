@@ -463,6 +463,152 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // TAG EDIT
+    if ($page === 'tags' && $action === 'edit' && $id) {
+        $name = $_POST['name'] ?? '';
+        $color = $_POST['color'] ?? '#3B82F6';
+
+        $db->query("UPDATE tags SET name = ?, color = ? WHERE id = ?", [$name, $color, $id]);
+
+        header("Location: ?page=tags&message=Tag updated successfully");
+        exit;
+    }
+
+    // TAG DELETE
+    if ($page === 'tags' && $action === 'delete' && $id) {
+        // Check if tag is in use
+        $fileCount = $db->fetchOne("SELECT COUNT(*) as count FROM file_tags WHERE tag_id = ?", [$id])['count'];
+
+        if ($fileCount > 0) {
+            $message = "Cannot delete tag: It is currently applied to $fileCount file(s). Remove the tag from all files first.";
+            $messageType = "error";
+        } else {
+            $db->query("DELETE FROM tags WHERE id = ?", [$id]);
+            $message = "Tag deleted successfully";
+            $messageType = "success";
+            header("Location: ?page=tags&message=" . urlencode($message));
+            exit;
+        }
+    }
+
+    // BACKUP CREATE
+    if ($page === 'settings' && $action === 'backup_create') {
+        // Admin only
+        if ($_SESSION['user_role'] !== 'admin') {
+            $message = "Unauthorized: Only admins can create backups";
+            $messageType = "error";
+        } else {
+            $backupDir = __DIR__ . '/storage/backups';
+            if (!is_dir($backupDir)) {
+                mkdir($backupDir, 0700, true);
+            }
+
+            $dbPath = __DIR__ . '/storage/database/rolodrawer.sqlite';
+            $timestamp = date('Y-m-d_H-i-s');
+            $backupPath = $backupDir . '/rolodrawer_backup_' . $timestamp . '.sqlite';
+
+            if (copy($dbPath, $backupPath)) {
+                $message = "Backup created successfully: rolodrawer_backup_$timestamp.sqlite";
+                $messageType = "success";
+            } else {
+                $message = "Failed to create backup";
+                $messageType = "error";
+            }
+            header("Location: ?page=settings&message=" . urlencode($message) . "&type=" . $messageType);
+            exit;
+        }
+    }
+
+    // BACKUP DOWNLOAD
+    if ($page === 'settings' && $action === 'backup_download' && isset($_GET['file'])) {
+        // Admin only
+        if ($_SESSION['user_role'] !== 'admin') {
+            die('Unauthorized');
+        }
+
+        $filename = basename($_GET['file']); // Security: prevent directory traversal
+        $backupPath = __DIR__ . '/storage/backups/' . $filename;
+
+        if (file_exists($backupPath) && preg_match('/^rolodrawer_backup_[\d\-_]+\.sqlite$/', $filename)) {
+            header('Content-Type: application/octet-stream');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Content-Length: ' . filesize($backupPath));
+            readfile($backupPath);
+            exit;
+        } else {
+            die('Backup file not found');
+        }
+    }
+
+    // BACKUP DELETE
+    if ($page === 'settings' && $action === 'backup_delete' && isset($_GET['file'])) {
+        // Admin only
+        if ($_SESSION['user_role'] !== 'admin') {
+            $message = "Unauthorized";
+            $messageType = "error";
+        } else {
+            $filename = basename($_GET['file']); // Security: prevent directory traversal
+            $backupPath = __DIR__ . '/storage/backups/' . $filename;
+
+            if (file_exists($backupPath) && preg_match('/^rolodrawer_backup_[\d\-_]+\.sqlite$/', $filename)) {
+                unlink($backupPath);
+                $message = "Backup deleted successfully";
+                $messageType = "success";
+            } else {
+                $message = "Backup file not found";
+                $messageType = "error";
+            }
+            header("Location: ?page=settings&message=" . urlencode($message) . "&type=" . $messageType);
+            exit;
+        }
+    }
+
+    // BACKUP RESTORE
+    if ($page === 'settings' && $action === 'backup_restore') {
+        // Admin only
+        if ($_SESSION['user_role'] !== 'admin') {
+            $message = "Unauthorized: Only admins can restore backups";
+            $messageType = "error";
+        } else {
+            if (isset($_FILES['backup_file']) && $_FILES['backup_file']['error'] === UPLOAD_ERR_OK) {
+                $tmpPath = $_FILES['backup_file']['tmp_name'];
+                $dbPath = __DIR__ . '/storage/database/rolodrawer.sqlite';
+
+                // Validate it's a SQLite database
+                try {
+                    $testDb = new PDO('sqlite:' . $tmpPath);
+                    $testDb->query("SELECT name FROM sqlite_master WHERE type='table' AND name='users'");
+                    $testDb = null;
+
+                    // Create a backup of current database before restoring
+                    $backupDir = __DIR__ . '/storage/backups';
+                    if (!is_dir($backupDir)) {
+                        mkdir($backupDir, 0700, true);
+                    }
+                    $preRestoreBackup = $backupDir . '/pre_restore_' . date('Y-m-d_H-i-s') . '.sqlite';
+                    copy($dbPath, $preRestoreBackup);
+
+                    // Restore the uploaded backup
+                    if (copy($tmpPath, $dbPath)) {
+                        $message = "Database restored successfully. A pre-restore backup was saved.";
+                        $messageType = "success";
+                    } else {
+                        $message = "Failed to restore database";
+                        $messageType = "error";
+                    }
+                } catch (Exception $e) {
+                    $message = "Invalid database file: " . $e->getMessage();
+                    $messageType = "error";
+                }
+            } else {
+                $message = "No file uploaded or upload error";
+                $messageType = "error";
+            }
+            header("Location: ?page=settings&message=" . urlencode($message) . "&type=" . $messageType);
+            exit;
+        }
+    }
+
     // ENTITY CREATE
     if ($page === 'entities' && $action === 'create') {
         $name = $_POST['name'] ?? '';
@@ -1280,6 +1426,9 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                 <a href="?page=users" class="block px-4 py-2 mt-4 <?= $page === 'users' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
                     <span class="inline-block w-5">👥</span> Users
                 </a>
+                <a href="?page=settings" class="block px-4 py-2 <?= $page === 'settings' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
+                    <span class="inline-block w-5">⚙️</span> Settings
+                </a>
                 <?php endif; ?>
                 <a href="?page=users&action=change_password" class="block px-4 py-2 <?= !$_SESSION['user_role'] || $_SESSION['user_role'] !== 'admin' ? 'mt-4' : '' ?> hover:bg-gray-700">
                     <span class="inline-block w-5">🔐</span> Change Password
@@ -1354,6 +1503,8 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             <span class="text-gray-900 font-medium">Reports</span>
                         <?php elseif ($page === 'users'): ?>
                             <span class="text-gray-900 font-medium">Users</span>
+                        <?php elseif ($page === 'settings'): ?>
+                            <span class="text-gray-900 font-medium">Settings</span>
                         <?php else: ?>
                             <span class="text-gray-900 font-medium"><?= ucfirst($page) ?></span>
                         <?php endif; ?>
@@ -2608,13 +2759,61 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                 <span class="font-medium"><?= htmlspecialchars($tag['name']) ?></span>
                                                 <span class="text-sm text-gray-500">(<?= $tag['file_count'] ?> files)</span>
                                             </div>
-                                            <a href="?page=search&tag=<?= $tag['id'] ?>" class="text-blue-600 hover:underline text-sm">View Files</a>
+                                            <div class="flex items-center gap-3">
+                                                <a href="?page=search&tag=<?= $tag['id'] ?>" class="text-blue-600 hover:underline text-sm">View Files</a>
+                                                <a href="?page=tags&action=edit&id=<?= $tag['id'] ?>" class="text-green-600 hover:underline text-sm">Edit</a>
+                                                <?php if ($tag['file_count'] == 0): ?>
+                                                    <form method="POST" action="?page=tags&action=delete&id=<?= $tag['id'] ?>" class="inline-flex items-center" onsubmit="return confirm('Are you sure you want to delete this tag?');">
+                                                        <button type="submit" class="text-red-600 hover:underline text-sm">Delete</button>
+                                                    </form>
+                                                <?php else: ?>
+                                                    <span class="text-gray-400 text-sm cursor-not-allowed" title="Cannot delete: tag is in use">Delete</span>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
                                     <?php endforeach; ?>
                                 <?php endif; ?>
                             </div>
                         </div>
                     </div>
+
+                <?php elseif ($page === 'tags' && $action === 'edit' && $id): ?>
+                    <!-- Edit Tag Page -->
+                    <div class="mb-6">
+                        <a href="?page=tags" class="text-blue-600 hover:underline">← Back to Tags</a>
+                    </div>
+
+                    <h2 class="text-3xl font-bold mb-6">Edit Tag</h2>
+
+                    <?php
+                    $tag = $db->fetchOne("SELECT * FROM tags WHERE id = ?", [$id]);
+                    if (!$tag): ?>
+                        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                            Tag not found.
+                        </div>
+                    <?php else: ?>
+                        <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
+                            <form method="POST" action="?page=tags&action=edit&id=<?= $id ?>">
+                                <div class="mb-4">
+                                    <label class="block text-gray-700 mb-2 font-medium">Tag Name *</label>
+                                    <input type="text" name="name" required
+                                           value="<?= htmlspecialchars($tag['name']) ?>"
+                                           class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-gray-700 mb-2 font-medium">Color</label>
+                                    <input type="color" name="color"
+                                           value="<?= htmlspecialchars($tag['color']) ?>"
+                                           class="w-20 h-10 border rounded cursor-pointer">
+                                    <span class="ml-3 text-sm text-gray-600">Current: <?= htmlspecialchars($tag['color']) ?></span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Update Tag</button>
+                                    <a href="?page=tags" class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400">Cancel</a>
+                                </div>
+                            </form>
+                        </div>
+                    <?php endif; ?>
 
                 <?php elseif ($page === 'files' && $action === 'create'): ?>
                     <!-- Create File Form with Tags and Entity -->
@@ -5713,6 +5912,129 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <p class="text-xs text-gray-600 mt-3">Tip: Bookmark this page on your mobile device for quick file lookups!</p>
                             </div>
                         </div>
+                    </div>
+
+                <?php elseif ($page === 'settings'): ?>
+                    <h2 class="text-3xl font-bold mb-6">System Settings</h2>
+
+                    <?php if (isset($_GET['message'])): ?>
+                        <div class="mb-6 p-4 rounded <?= ($_GET['type'] ?? 'success') === 'error' ? 'bg-red-100 border border-red-400 text-red-700' : 'bg-green-100 border border-green-400 text-green-700' ?>">
+                            <?= htmlspecialchars($_GET['message']) ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Backup & Restore Section -->
+                    <div class="bg-white rounded-lg shadow p-6 mb-6">
+                        <h3 class="text-2xl font-bold mb-4">Backup & Restore</h3>
+
+                        <!-- Create Backup -->
+                        <div class="mb-6 pb-6 border-b">
+                            <h4 class="font-bold mb-3">Create Backup</h4>
+                            <p class="text-gray-600 mb-4 text-sm">Create a backup of the current database. Backups are stored with timestamps for easy identification.</p>
+                            <form method="POST" action="?page=settings&action=backup_create" class="inline">
+                                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                                    Create Backup Now
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Existing Backups -->
+                        <div class="mb-6 pb-6 border-b">
+                            <h4 class="font-bold mb-3">Existing Backups</h4>
+                            <?php
+                            $backupDir = __DIR__ . '/storage/backups';
+                            $backups = [];
+                            if (is_dir($backupDir)) {
+                                $files = scandir($backupDir);
+                                foreach ($files as $file) {
+                                    if (preg_match('/^rolodrawer_backup_[\d\-_]+\.sqlite$/', $file) ||
+                                        preg_match('/^pre_restore_[\d\-_]+\.sqlite$/', $file)) {
+                                        $backups[] = [
+                                            'filename' => $file,
+                                            'size' => filesize($backupDir . '/' . $file),
+                                            'date' => filemtime($backupDir . '/' . $file)
+                                        ];
+                                    }
+                                }
+                                // Sort by date descending
+                                usort($backups, function($a, $b) {
+                                    return $b['date'] - $a['date'];
+                                });
+                            }
+                            ?>
+
+                            <?php if (empty($backups)): ?>
+                                <p class="text-gray-500 italic">No backups found. Create your first backup above.</p>
+                            <?php else: ?>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full">
+                                        <thead>
+                                            <tr class="border-b">
+                                                <th class="text-left py-2 px-3">Filename</th>
+                                                <th class="text-left py-2 px-3">Date</th>
+                                                <th class="text-left py-2 px-3">Size</th>
+                                                <th class="text-right py-2 px-3">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($backups as $backup): ?>
+                                                <tr class="border-b hover:bg-gray-50">
+                                                    <td class="py-2 px-3">
+                                                        <span class="font-mono text-sm"><?= htmlspecialchars($backup['filename']) ?></span>
+                                                        <?php if (strpos($backup['filename'], 'pre_restore') !== false): ?>
+                                                            <span class="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Auto-saved</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                    <td class="py-2 px-3 text-sm text-gray-600">
+                                                        <?= date('Y-m-d H:i:s', $backup['date']) ?>
+                                                    </td>
+                                                    <td class="py-2 px-3 text-sm text-gray-600">
+                                                        <?= number_format($backup['size'] / 1024, 2) ?> KB
+                                                    </td>
+                                                    <td class="py-2 px-3 text-right">
+                                                        <a href="?page=settings&action=backup_download&file=<?= urlencode($backup['filename']) ?>"
+                                                           class="text-blue-600 hover:underline text-sm mr-3">Download</a>
+                                                        <form method="POST" action="?page=settings&action=backup_delete&file=<?= urlencode($backup['filename']) ?>"
+                                                              class="inline"
+                                                              onsubmit="return confirm('Are you sure you want to delete this backup?');">
+                                                            <button type="submit" class="text-red-600 hover:underline text-sm">Delete</button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Restore Backup -->
+                        <div>
+                            <h4 class="font-bold mb-3 text-red-600">⚠️ Restore Backup</h4>
+                            <div class="bg-yellow-50 border border-yellow-300 rounded p-4 mb-4">
+                                <p class="text-sm text-gray-700">
+                                    <strong>Warning:</strong> Restoring a backup will replace the current database.
+                                    A pre-restore backup will be created automatically, but use this feature with caution.
+                                </p>
+                            </div>
+                            <form method="POST" action="?page=settings&action=backup_restore" enctype="multipart/form-data"
+                                  onsubmit="return confirm('This will replace the current database. A pre-restore backup will be created. Continue?');">
+                                <div class="flex items-center gap-3">
+                                    <input type="file" name="backup_file" accept=".sqlite" required
+                                           class="px-3 py-2 border rounded">
+                                    <button type="submit" class="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700">
+                                        Restore Database
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-2">Only .sqlite files are accepted</p>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Additional Settings Sections (Future) -->
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                        <h3 class="text-lg font-bold mb-2">Additional Settings</h3>
+                        <p class="text-gray-600 text-sm">More system settings will be available in future versions.</p>
                     </div>
 
                 <?php elseif ($page === 'reports'): ?>

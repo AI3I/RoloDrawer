@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [1.0.5] - 2026-01-02
+
+### Added
+- **Tag Management**: Complete tag editing and deletion functionality
+  - Edit tag name and color
+  - Smart delete protection: prevents deleting tags in use
+  - Delete button grayed out with tooltip for tags with files
+  - Edit/Delete buttons added to tags list
+  - Full CRUD operations for tags
+- **System Settings Page**: New admin-only Settings page with backup/restore functionality
+  - Create database backups with timestamps
+  - List all existing backups with date and file size
+  - Download backups securely
+  - Delete old backups
+  - Restore from backup file upload with validation
+  - Automatic pre-restore backup creation
+  - Auto-saved backups labeled for clarity
+  - Security: Admin-only access, path validation, filename validation
+- **Settings Navigation**: Added Settings link to admin navigation menu
+
 ### Enhanced
 - **File Move Functionality**: Made file moves more robust with comprehensive update capabilities
   - Added entity assignment field to move forms
@@ -24,6 +46,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Changed format to clean "Location > Cabinet Label" display
   - Removed duplicate SQL JOINs that were causing 500 errors
   - Fixed SELECT clause to avoid duplicate column selections
+
+### Security
+- **Backup/Restore Security**: Multiple security layers implemented
+  - Admin-only access checks on all backup operations
+  - Directory traversal prevention using basename()
+  - Regex validation for backup filenames
+  - Database validation before restore (checks for 'users' table)
+  - Automatic pre-restore backup creation for safety
 
 ---
 
