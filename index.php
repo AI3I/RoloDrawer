@@ -4422,7 +4422,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     <!-- Locations Management -->
                     <h2 class="text-3xl font-bold mb-6">Location Management</h2>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                         <!-- Locations List -->
                         <div class="bg-white rounded-lg shadow p-6">
                             <div class="flex justify-between items-center mb-4">
@@ -4440,7 +4440,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 </form>
                             </div>
 
-                            <div class="space-y-2">
+                            <div class="space-y-2 max-h-96 overflow-y-auto">
                                 <?php
                                 $locations = $db->fetchAll("SELECT * FROM locations ORDER BY name");
                                 foreach ($locations as $loc):
@@ -4487,7 +4487,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 </form>
                             </div>
 
-                            <div class="space-y-2">
+                            <div class="space-y-2 max-h-96 overflow-y-auto">
                                 <?php
                                 $cabinets = $db->fetchAll("
                                     SELECT c.*, l.name as location_name
@@ -4507,49 +4507,87 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <?php endforeach; ?>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Drawers List -->
-                        <div class="bg-white rounded-lg shadow p-6">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-xl font-bold">Drawers</h3>
-                                <button onclick="document.getElementById('drawerForm').classList.toggle('hidden')" class="bg-purple-600 text-white px-3 py-1 rounded text-sm">+ Add</button>
-                            </div>
+                    <!-- Drawers Table (Full Width) -->
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold">Drawers</h3>
+                            <button onclick="document.getElementById('drawerForm').classList.toggle('hidden')" class="bg-purple-600 text-white px-4 py-2 rounded text-sm">+ Add Drawer</button>
+                        </div>
 
-                            <div id="drawerForm" class="hidden mb-4 p-4 bg-gray-50 rounded">
-                                <form method="POST" action="?page=drawers&action=create">
-                                    <select name="cabinet_id" required class="w-full px-3 py-2 border rounded mb-2">
+                        <div id="drawerForm" class="hidden mb-4 p-4 bg-gray-50 rounded max-w-md">
+                            <form method="POST" action="?page=drawers&action=create">
+                                <div class="mb-2">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Cabinet *</label>
+                                    <select name="cabinet_id" required class="w-full px-3 py-2 border rounded">
                                         <option value="">Select Cabinet</option>
                                         <?php foreach ($cabinets as $cab): ?>
-                                            <option value="<?= $cab['id'] ?>"><?= htmlspecialchars($cab['label']) ?></option>
+                                            <option value="<?= $cab['id'] ?>"><?= htmlspecialchars($cab['label']) ?><?= $cab['location_name'] ? ' (' . htmlspecialchars($cab['location_name']) . ')' : '' ?></option>
                                         <?php endforeach; ?>
                                     </select>
-                                    <input type="text" name="label" placeholder="Drawer Label (A, B, Top...)" required class="w-full px-3 py-2 border rounded mb-2">
-                                    <input type="number" name="position" placeholder="Position" value="1" class="w-full px-3 py-2 border rounded mb-2">
-                                    <button type="submit" class="bg-purple-600 text-white px-4 py-2 rounded text-sm w-full">Create</button>
-                                </form>
-                            </div>
-
-                            <div class="space-y-2">
-                                <?php
-                                $drawers = $db->fetchAll("
-                                    SELECT d.*, c.label as cabinet_label
-                                    FROM drawers d
-                                    JOIN cabinets c ON d.cabinet_id = c.id
-                                    ORDER BY c.label, d.position
-                                ");
-                                foreach ($drawers as $drawer):
-                                ?>
-                                    <div class="p-3 bg-gray-50 rounded hover:bg-gray-100">
-                                        <div class="flex items-center justify-between mb-1">
-                                            <div class="font-medium">Drawer <?= htmlspecialchars($drawer['label']) ?></div>
-                                            <a href="?page=drawers&action=edit&id=<?= $drawer['id'] ?>" class="text-green-600 hover:underline text-xs">Edit</a>
-                                        </div>
-                                        <div class="text-sm text-gray-600"><?= htmlspecialchars($drawer['cabinet_label']) ?></div>
-                                        <a href="?page=locations&action=drawer_qr&id=<?= $drawer['id'] ?>" target="_blank" class="text-xs text-blue-600 hover:underline">View QR Code</a>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Drawer Label *</label>
+                                    <input type="text" name="label" placeholder="A, B, Top, Bottom..." required class="w-full px-3 py-2 border rounded">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Position</label>
+                                    <input type="number" name="position" placeholder="1" value="1" class="w-full px-3 py-2 border rounded">
+                                </div>
+                                <button type="submit" class="bg-purple-600 text-white px-4 py-2 rounded text-sm w-full">Create Drawer</button>
+                            </form>
                         </div>
+
+                        <?php
+                        $drawers = $db->fetchAll("
+                            SELECT d.*, c.label as cabinet_label, l.name as location_name
+                            FROM drawers d
+                            JOIN cabinets c ON d.cabinet_id = c.id
+                            LEFT JOIN locations l ON c.location_id = l.id
+                            ORDER BY l.name, c.label, d.position
+                        ");
+                        ?>
+
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cabinet</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Drawer</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <?php if (empty($drawers)): ?>
+                                        <tr>
+                                            <td colspan="5" class="px-6 py-4 text-center text-gray-500 text-sm">No drawers found. Click "+ Add Drawer" to create one.</td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <?php foreach ($drawers as $drawer): ?>
+                                            <tr class="hover:bg-gray-50">
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><?= htmlspecialchars($drawer['location_name'] ?? '-') ?></td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"><?= htmlspecialchars($drawer['cabinet_label']) ?></td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"><?= htmlspecialchars($drawer['label']) ?></td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><?= $drawer['position'] ?></td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                                    <a href="?page=drawers&action=edit&id=<?= $drawer['id'] ?>" class="text-blue-600 hover:text-blue-900 mr-3">Edit</a>
+                                                    <a href="?page=locations&action=drawer_qr&id=<?= $drawer['id'] ?>" target="_blank" class="text-purple-600 hover:text-purple-900">QR Code</a>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <?php if (count($drawers) > 0): ?>
+                            <div class="mt-4 text-sm text-gray-600">
+                                Total: <?= count($drawers) ?> drawer<?= count($drawers) !== 1 ? 's' : '' ?>
+                            </div>
+                        <?php endif; ?>
                     </div>
 
                     <!-- QR Code Generator for Locations/Drawers -->
