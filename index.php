@@ -1220,8 +1220,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                 <a href="?page=archived" class="block px-4 py-2 <?= $page === 'archived' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
                     <span class="inline-block w-5">📦</span> Archive
                 </a>
-                <hr class="my-4 border-gray-700">
-                <a href="?page=entities" class="block px-4 py-2 <?= $page === 'entities' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
+                <a href="?page=entities" class="block px-4 py-2 mt-4 <?= $page === 'entities' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
                     <span class="inline-block w-5">🏢</span> Entities
                 </a>
                 <a href="?page=storage" class="block px-4 py-2 <?= $page === 'storage' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
@@ -1231,8 +1230,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     <span class="inline-block w-5">🏷️</span> Tags
                 </a>
                 <?php if ($_SESSION['user_role'] === 'admin'): ?>
-                <hr class="my-4 border-gray-700">
-                <a href="?page=checkouts" class="block px-4 py-2 <?= $page === 'checkouts' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
+                <a href="?page=checkouts" class="block px-4 py-2 mt-4 <?= $page === 'checkouts' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
                     <span class="inline-block w-5">📋</span> All Checkouts
                 </a>
                 <a href="?page=movements" class="block px-4 py-2 <?= $page === 'movements' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
@@ -1245,13 +1243,12 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     <span class="inline-block w-5">📈</span> Reports
                 </a>
                 <?php endif; ?>
-                <hr class="my-4 border-gray-700">
                 <?php if ($_SESSION['user_role'] === 'admin'): ?>
-                <a href="?page=users" class="block px-4 py-2 <?= $page === 'users' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
+                <a href="?page=users" class="block px-4 py-2 mt-4 <?= $page === 'users' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
                     <span class="inline-block w-5">👥</span> Users
                 </a>
                 <?php endif; ?>
-                <a href="?page=users&action=change_password" class="block px-4 py-2 hover:bg-gray-700">
+                <a href="?page=users&action=change_password" class="block px-4 py-2 <?= !$_SESSION['user_role'] || $_SESSION['user_role'] !== 'admin' ? 'mt-4' : '' ?> hover:bg-gray-700">
                     <span class="inline-block w-5">🔐</span> Change Password
                 </a>
                 <a href="?page=logout" class="block px-4 py-2 hover:bg-gray-700">
