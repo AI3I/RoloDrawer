@@ -4182,7 +4182,8 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             </td>
                                             <td class="px-6 py-4">
                                                 <a href="?page=files&action=view&id=<?= $file['id'] ?>" class="text-blue-600 hover:underline mr-3">View</a>
-                                                <a href="?page=files&action=edit&id=<?= $file['id'] ?>" class="text-green-600 hover:underline">Edit</a>
+                                                <a href="?page=files&action=edit&id=<?= $file['id'] ?>" class="text-green-600 hover:underline mr-3">Edit</a>
+                                                <a href="#" onclick="openArchiveModal(<?= $file['id'] ?>, '<?= htmlspecialchars($file['display_number'], ENT_QUOTES) ?>'); return false;" class="text-yellow-600 hover:underline">Archive</a>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -4234,6 +4235,31 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         </div>
                     </div>
 
+                    <!-- Archive Modal -->
+                    <div id="archiveModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div class="bg-white rounded-lg p-8 max-w-md w-full">
+                            <h3 class="text-2xl font-bold mb-4 text-yellow-700">Archive File</h3>
+                            <p class="text-gray-600 mb-4">Archive File #<span id="archiveFileNumber"></span></p>
+                            <p class="text-sm text-gray-600 mb-4">Archiving removes this file from active listings but preserves all data for future reference.</p>
+                            <form method="POST" id="archiveForm" action="">
+                                <div class="mb-4">
+                                    <label class="block text-gray-700 mb-2 font-medium">Archive Reason (Required) *</label>
+                                    <textarea name="archived_reason" required rows="4"
+                                              placeholder="Example: Project completed, Retention period expired, Superseded by newer version, etc."
+                                              class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-yellow-500"></textarea>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button type="submit" class="bg-yellow-600 text-white px-6 py-2 rounded hover:bg-yellow-700 font-medium">
+                                        Confirm Archive
+                                    </button>
+                                    <button type="button" onclick="hideArchiveModal()" class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
                     <script>
                     function updateBulkMoveButton() {
                         const checkboxes = document.querySelectorAll('.file-checkbox:checked');
@@ -4270,6 +4296,16 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
 
                     function hideBulkMoveModal() {
                         document.getElementById('bulkMoveModal').classList.add('hidden');
+                    }
+
+                    function openArchiveModal(fileId, fileNumber) {
+                        document.getElementById('archiveFileNumber').textContent = fileNumber;
+                        document.getElementById('archiveForm').action = '?page=files&action=archive&id=' + fileId;
+                        document.getElementById('archiveModal').classList.remove('hidden');
+                    }
+
+                    function hideArchiveModal() {
+                        document.getElementById('archiveModal').classList.add('hidden');
                     }
                     </script>
 
