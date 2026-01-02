@@ -988,6 +988,22 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
     <!-- Login Page -->
     <div class="min-h-screen flex items-center justify-center">
         <div class="bg-white p-8 rounded-lg shadow-md w-96">
+            <!-- RoloDrawer Icon -->
+            <div class="flex justify-center mb-4">
+                <svg width="80" height="80" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Drawer body -->
+                    <rect x="15" y="30" width="70" height="50" rx="3" fill="#3B82F6" stroke="#1E40AF" stroke-width="2"/>
+                    <!-- Drawer handle -->
+                    <rect x="42" y="48" width="16" height="8" rx="2" fill="#1E40AF"/>
+                    <!-- Index cards (visible from top) -->
+                    <path d="M 20 30 L 20 25 L 80 25 L 80 30" fill="#60A5FA" stroke="#1E40AF" stroke-width="1.5"/>
+                    <line x1="30" y1="25" x2="30" y2="30" stroke="#1E40AF" stroke-width="1"/>
+                    <line x1="45" y1="25" x2="45" y2="30" stroke="#1E40AF" stroke-width="1"/>
+                    <line x1="60" y1="25" x2="60" y2="30" stroke="#1E40AF" stroke-width="1"/>
+                    <!-- Front panel detail lines -->
+                    <line x1="20" y1="65" x2="80" y2="65" stroke="#1E40AF" stroke-width="1" opacity="0.3"/>
+                </svg>
+            </div>
             <h1 class="text-2xl font-bold mb-6 text-center">RoloDrawer</h1>
             <?php
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
