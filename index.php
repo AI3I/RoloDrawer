@@ -2170,7 +2170,15 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                         <td class="px-6 py-4 whitespace-nowrap"><?= htmlspecialchars($user['name']) ?></td>
                                                         <td class="px-6 py-4 whitespace-nowrap"><?= htmlspecialchars($user['email']) ?></td>
                                                         <td class="px-6 py-4 whitespace-nowrap">
-                                                            <span class="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800"><?= ucfirst($user['role']) ?></span>
+                                                            <?php
+                                                            $roleColors = [
+                                                                'admin' => 'bg-red-100 text-red-800',
+                                                                'user' => 'bg-blue-100 text-blue-800',
+                                                                'viewer' => 'bg-gray-100 text-gray-800'
+                                                            ];
+                                                            $roleColor = $roleColors[$user['role']] ?? 'bg-gray-100 text-gray-800';
+                                                            ?>
+                                                            <span class="px-2 py-1 text-xs rounded <?= $roleColor ?>"><?= ucfirst($user['role']) ?></span>
                                                         </td>
                                                         <td class="px-6 py-4 whitespace-nowrap">
                                                             <?php
