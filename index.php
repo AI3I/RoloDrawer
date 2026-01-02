@@ -2633,7 +2633,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             <div class="mb-4">
                                 <label class="block text-gray-700 mb-2">Entity (optional)</label>
                                 <select name="entity_id" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <option value="">No entity</option>
+                                    <option value="">Unspecified</option>
                                     <?php foreach ($allEntities as $entity): ?>
                                         <option value="<?= $entity['id'] ?>">
                                             <?= htmlspecialchars($entity['name']) ?>
@@ -2690,8 +2690,9 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 </div>
                             </div>
                             <script>
-                            document.getElementById('location_filter_create').addEventListener('change', function() {
-                                const locationId = this.value;
+                            function filterCabinetsCreate() {
+                                const locationSelect = document.getElementById('location_filter_create');
+                                const locationId = locationSelect.value;
                                 const cabinetSelect = document.getElementById('cabinet_select_create');
                                 const options = cabinetSelect.querySelectorAll('option');
 
@@ -2701,7 +2702,10 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         return;
                                     }
 
-                                    if (!locationId || option.dataset.location === locationId) {
+                                    if (!locationId) {
+                                        // Hide all cabinet options if no location selected
+                                        option.style.display = 'none';
+                                    } else if (option.dataset.location === locationId) {
                                         option.style.display = '';
                                     } else {
                                         option.style.display = 'none';
@@ -2712,7 +2716,12 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 if (cabinetSelect.selectedOptions[0] && cabinetSelect.selectedOptions[0].style.display === 'none') {
                                     cabinetSelect.value = '';
                                 }
-                            });
+                            }
+
+                            document.getElementById('location_filter_create').addEventListener('change', filterCabinetsCreate);
+
+                            // Run on page load to hide all cabinets initially
+                            filterCabinetsCreate();
                             </script>
                             <div class="grid grid-cols-2 gap-4 mb-6">
                                 <div>
@@ -3316,13 +3325,22 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     </form>
                                     <script>
                                     // Dynamic cabinet filtering based on location (for archived files)
-                                    document.getElementById('location_filter_move_archived').addEventListener('change', function() {
-                                        const locationId = this.value;
+                                    function filterCabinetsMoveSArchived() {
+                                        const locationSelect = document.getElementById('location_filter_move_archived');
+                                        const locationId = locationSelect.value;
                                         const cabinetSelect = document.getElementById('cabinet_select_move_archived');
                                         const options = cabinetSelect.querySelectorAll('option');
 
                                         options.forEach(option => {
-                                            if (option.value === '' || !locationId || option.dataset.location === locationId) {
+                                            if (option.value === '') {
+                                                option.style.display = '';
+                                                return;
+                                            }
+
+                                            if (!locationId) {
+                                                // Hide all cabinet options if no location selected
+                                                option.style.display = 'none';
+                                            } else if (option.dataset.location === locationId) {
                                                 option.style.display = '';
                                             } else {
                                                 option.style.display = 'none';
@@ -3333,9 +3351,12 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         if (cabinetSelect.selectedOptions[0] && cabinetSelect.selectedOptions[0].style.display === 'none') {
                                             cabinetSelect.value = '';
                                         }
-                                    });
+                                    }
+
+                                    document.getElementById('location_filter_move_archived').addEventListener('change', filterCabinetsMoveSArchived);
+
                                     // Trigger on page load to filter based on pre-selected location
-                                    document.getElementById('location_filter_move_archived').dispatchEvent(new Event('change'));
+                                    filterCabinetsMoveSArchived();
                                     </script>
                                 <?php else: ?>
                                     <form method="POST" action="?page=files&action=move&id=<?= $file['id'] ?>">
@@ -3427,13 +3448,22 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     </form>
                                     <script>
                                     // Dynamic cabinet filtering based on location
-                                    document.getElementById('location_filter_move').addEventListener('change', function() {
-                                        const locationId = this.value;
+                                    function filterCabinetsMove() {
+                                        const locationSelect = document.getElementById('location_filter_move');
+                                        const locationId = locationSelect.value;
                                         const cabinetSelect = document.getElementById('cabinet_select_move');
                                         const options = cabinetSelect.querySelectorAll('option');
 
                                         options.forEach(option => {
-                                            if (option.value === '' || !locationId || option.dataset.location === locationId) {
+                                            if (option.value === '') {
+                                                option.style.display = '';
+                                                return;
+                                            }
+
+                                            if (!locationId) {
+                                                // Hide all cabinet options if no location selected
+                                                option.style.display = 'none';
+                                            } else if (option.dataset.location === locationId) {
                                                 option.style.display = '';
                                             } else {
                                                 option.style.display = 'none';
@@ -3444,9 +3474,12 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         if (cabinetSelect.selectedOptions[0] && cabinetSelect.selectedOptions[0].style.display === 'none') {
                                             cabinetSelect.value = '';
                                         }
-                                    });
+                                    }
+
+                                    document.getElementById('location_filter_move').addEventListener('change', filterCabinetsMove);
+
                                     // Trigger on page load to filter based on pre-selected location
-                                    document.getElementById('location_filter_move').dispatchEvent(new Event('change'));
+                                    filterCabinetsMove();
                                     </script>
                                 <?php endif; ?>
                             </div>
@@ -3918,7 +3951,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <div class="mb-4">
                                     <label class="block text-gray-700 mb-2">Entity</label>
                                     <select name="entity_id" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="">No entity</option>
+                                        <option value="">Unspecified</option>
                                         <?php foreach ($allEntities as $entity): ?>
                                             <option value="<?= $entity['id'] ?>" <?= $file['entity_id'] == $entity['id'] ? 'selected' : '' ?>>
                                                 <?= htmlspecialchars($entity['name']) ?>
@@ -3959,7 +3992,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 ?>
                                 <div class="grid grid-cols-2 gap-4 mb-6">
                                     <div>
-                                        <label class="block text-gray-700 mb-2">Assign to Location (optional)</label>
+                                        <label class="block text-gray-700 mb-2">Assign to Location *</label>
                                         <select id="location_filter_edit" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                             <option value="">Select a location...</option>
                                             <?php foreach ($locations as $loc): ?>
@@ -3970,7 +4003,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         </select>
                                     </div>
                                     <div>
-                                        <label class="block text-gray-700 mb-2">Assign to Cabinet (optional)</label>
+                                        <label class="block text-gray-700 mb-2">Assign to Cabinet *</label>
                                         <select name="cabinet_id" id="cabinet_select_edit" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                             <option value="">Not assigned</option>
                                             <?php foreach ($cabinets as $cabinet): ?>
@@ -3984,8 +4017,9 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     </div>
                                 </div>
                                 <script>
-                                document.getElementById('location_filter_edit').addEventListener('change', function() {
-                                    const locationId = this.value;
+                                function filterCabinetsEdit() {
+                                    const locationSelect = document.getElementById('location_filter_edit');
+                                    const locationId = locationSelect.value;
                                     const cabinetSelect = document.getElementById('cabinet_select_edit');
                                     const options = cabinetSelect.querySelectorAll('option');
 
@@ -3995,7 +4029,10 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             return;
                                         }
 
-                                        if (!locationId || option.dataset.location === locationId) {
+                                        if (!locationId) {
+                                            // Hide all cabinet options if no location selected
+                                            option.style.display = 'none';
+                                        } else if (option.dataset.location === locationId) {
                                             option.style.display = '';
                                         } else {
                                             option.style.display = 'none';
@@ -4006,7 +4043,12 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     if (cabinetSelect.selectedOptions[0] && cabinetSelect.selectedOptions[0].style.display === 'none') {
                                         cabinetSelect.value = '';
                                     }
-                                });
+                                }
+
+                                document.getElementById('location_filter_edit').addEventListener('change', filterCabinetsEdit);
+
+                                // Run on page load to hide cabinets that don't match current location
+                                filterCabinetsEdit();
                                 </script>
                                 <div class="grid grid-cols-2 gap-4 mb-6">
                                     <div>
@@ -5323,7 +5365,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <div class="mb-4">
                                     <label class="block text-gray-700 mb-2">Entity</label>
                                     <select name="entity_id" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="">No entity</option>
+                                        <option value="">Unspecified</option>
                                         <?php foreach ($allEntities as $entity): ?>
                                             <option value="<?= $entity['id'] ?>" <?= $cabinet['entity_id'] == $entity['id'] ? 'selected' : '' ?>>
                                                 <?= htmlspecialchars($entity['name']) ?>
