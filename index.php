@@ -3582,7 +3582,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             </div>
                         <?php endif; ?>
 
-                        <?php if (!$file['is_archived'] && in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
+                        <?php if (empty($file['is_archived']) && in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
                             <!-- Archive File Section -->
                             <div class="bg-white rounded-lg shadow p-6 mb-6" x-data="{ showArchiveForm: false }">
                                 <h3 class="font-bold text-lg mb-4 text-yellow-700">Archive File</h3>
