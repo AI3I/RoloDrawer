@@ -105,6 +105,44 @@ if ($page === 'logout') {
     exit;
 }
 
+// Handle CSV exports (must be before any HTML output)
+$format = $_GET['format'] ?? '';
+if ($format === 'csv' && $page === 'reports') {
+    $report = $_GET['report'] ?? '';
+
+    function exportCSV($data, $filename, $headers) {
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        $output = fopen('php://output', 'w');
+        fputcsv($output, $headers);
+        foreach ($data as $row) { fputcsv($output, $row); }
+        fclose($output);
+        exit;
+    }
+
+    if ($report === 'by_location') {
+        $files = $db->fetchAll("SELECT f.*, d.label as drawer_label, c.label as cabinet_label, l.name as location_name, e.name as entity_name, u.name as owner_name FROM files f LEFT JOIN drawers d ON f.current_drawer_id = d.id LEFT JOIN cabinets c ON d.cabinet_id = c.id LEFT JOIN locations l ON c.location_id = l.id LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN users u ON f.owner_id = u.id WHERE f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY l.name, c.label, d.label");
+        $data = array_map(fn($f) => [$f['location_name'] ?: 'No Location', $f['cabinet_label'] ?: 'No Cabinet', $f['drawer_label'] ?: 'No Drawer', $f['display_number'], $f['name'], $f['owner_name'], $f['sensitivity']], $files);
+        exportCSV($data, 'files_by_location_'.date('Y-m-d').'.csv', ['Location','Cabinet','Drawer','File #','Name','Owner','Sensitivity']);
+    } elseif ($report === 'by_entity') {
+        $files = $db->fetchAll("SELECT f.*, e.name as entity_name, u.name as owner_name FROM files f LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN users u ON f.owner_id = u.id WHERE f.is_destroyed = 0 ORDER BY e.name, f.display_number");
+        $data = array_map(fn($f) => [$f['entity_name'] ?: 'No Entity', $f['display_number'], $f['name'], $f['owner_name'], $f['sensitivity'], $f['is_archived'] ? 'Yes' : 'No'], $files);
+        exportCSV($data, 'files_by_entity_'.date('Y-m-d').'.csv', ['Entity','File #','Name','Owner','Sensitivity','Archived']);
+    } elseif ($report === 'by_tag') {
+        $tags = $db->fetchAll("SELECT t.*, COUNT(ft.file_id) as file_count FROM tags t LEFT JOIN file_tags ft ON t.id = ft.tag_id GROUP BY t.id ORDER BY file_count DESC, t.name");
+        $data = array_map(fn($t) => [$t['name'], $t['file_count'], $t['color']], $tags);
+        exportCSV($data, 'files_by_tag_'.date('Y-m-d').'.csv', ['Tag','File Count','Color']);
+    } elseif ($report === 'checkouts') {
+        $currentCheckouts = $db->fetchAll("SELECT f.*, u.name as checked_out_to FROM files f LEFT JOIN users u ON f.checked_out_by = u.id WHERE f.is_checked_out = 1 ORDER BY f.expected_return_date");
+        $data = array_map(fn($f) => [$f['display_number'], $f['name'], $f['checked_out_to'], $f['checked_out_at'], $f['expected_return_date'], daysOverdue($f['expected_return_date'])], $currentCheckouts);
+        exportCSV($data, 'checkout_status_'.date('Y-m-d').'.csv', ['File #','Name','Checked Out To','Date','Expected Return','Days Overdue']);
+    } elseif ($report === 'overdue') {
+        $overdueFiles = $db->fetchAll("SELECT f.*, u.name as checked_out_to, u.email as user_email FROM files f LEFT JOIN users u ON f.checked_out_by = u.id WHERE f.is_checked_out = 1 AND f.expected_return_date < DATE('now') ORDER BY f.expected_return_date");
+        $data = array_map(fn($f) => [$f['display_number'], $f['name'], $f['checked_out_to'], $f['user_email'], $f['expected_return_date'], daysOverdue($f['expected_return_date'])], $overdueFiles);
+        exportCSV($data, 'overdue_files_'.date('Y-m-d').'.csv', ['File #','Name','Checked Out To','Email','Expected Return','Days Overdue']);
+    }
+}
+
 // Check if logged in
 if (!isset($_SESSION['user_id']) && $page !== 'login') {
     header('Location: ?page=login');
@@ -4882,17 +4920,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                 <?php elseif ($page === 'reports'): ?>
                     <?php
                     $report = $_GET['report'] ?? 'dashboard';
-                    $format = $_GET['format'] ?? '';
-                    
-                    function exportCSV($data, $filename, $headers) {
-                        header('Content-Type: text/csv');
-                        header('Content-Disposition: attachment; filename="' . $filename . '"');
-                        $output = fopen('php://output', 'w');
-                        fputcsv($output, $headers);
-                        foreach ($data as $row) { fputcsv($output, $row); }
-                        fclose($output);
-                        exit;
-                    }
                     ?>
                     <style>
                         @media print { .no-print { display: none !important; } .bg-white { background: white !important; } body { background: white; } }
@@ -4965,10 +4992,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     <?php elseif ($report === 'by_location'): ?>
                         <?php
                         $files = $db->fetchAll("SELECT f.*, d.label as drawer_label, c.label as cabinet_label, l.name as location_name, e.name as entity_name, u.name as owner_name FROM files f LEFT JOIN drawers d ON f.current_drawer_id = d.id LEFT JOIN cabinets c ON d.cabinet_id = c.id LEFT JOIN locations l ON c.location_id = l.id LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN users u ON f.owner_id = u.id WHERE f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY l.name, c.label, d.label");
-                        if ($format === 'csv') {
-                            $data = array_map(fn($f) => [$f['location_name'] ?: 'No Location', $f['cabinet_label'] ?: 'No Cabinet', $f['drawer_label'] ?: 'No Drawer', $f['display_number'], $f['name'], $f['owner_name'], $f['sensitivity']], $files);
-                            exportCSV($data, 'files_by_location_'.date('Y-m-d').'.csv', ['Location','Cabinet','Drawer','File #','Name','Owner','Sensitivity']);
-                        }
                         $grouped = [];
                         foreach($files as $f) {
                             $loc = $f['location_name'] ?: 'No Location';
@@ -5019,10 +5042,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     <?php elseif ($report === 'by_entity'): ?>
                         <?php
                         $files = $db->fetchAll("SELECT f.*, e.name as entity_name, u.name as owner_name FROM files f LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN users u ON f.owner_id = u.id WHERE f.is_destroyed = 0 ORDER BY e.name, f.display_number");
-                        if ($format === 'csv') {
-                            $data = array_map(fn($f) => [$f['entity_name'] ?: 'No Entity', $f['display_number'], $f['name'], $f['owner_name'], $f['is_archived'] ? 'Archived' : ($f['is_checked_out'] ? 'Checked Out' : 'Active'), ucfirst($f['sensitivity'])], $files);
-                            exportCSV($data, 'files_by_entity_'.date('Y-m-d').'.csv', ['Entity','File #','Name','Owner','Status','Sensitivity']);
-                        }
                         $grouped = [];
                         foreach($files as $f) {
                             $ent = $f['entity_name'] ?: 'No Entity';
@@ -5064,10 +5083,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     <?php elseif ($report === 'by_tag'): ?>
                         <?php
                         $tags = $db->fetchAll("SELECT t.*, COUNT(ft.file_id) as file_count FROM tags t LEFT JOIN file_tags ft ON t.id = ft.tag_id GROUP BY t.id ORDER BY file_count DESC, t.name");
-                        if ($format === 'csv') {
-                            $data = array_map(fn($t) => [$t['name'], $t['file_count'], $t['color']], $tags);
-                            exportCSV($data, 'files_by_tag_'.date('Y-m-d').'.csv', ['Tag','File Count','Color']);
-                        }
                         ?>
                         <div class="flex justify-between items-center mb-6">
                             <div><a href="?page=reports" class="text-blue-600 hover:underline">← Back to Reports</a><h2 class="text-3xl font-bold mt-2">Files by Tag</h2></div>
@@ -5122,10 +5137,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         <?php else:
                             $currentCheckouts = $db->fetchAll("SELECT f.*, u.name as checked_out_to FROM files f LEFT JOIN users u ON f.checked_out_by = u.id WHERE f.is_checked_out = 1 ORDER BY f.expected_return_date");
                             $checkoutHistory = $db->fetchAll("SELECT fc.*, f.display_number, f.name as file_name, u.name as user_name FROM file_checkouts fc JOIN files f ON fc.file_id = f.id LEFT JOIN users u ON fc.user_id = u.id WHERE fc.checked_out_at >= datetime('now', '-30 days') ORDER BY fc.checked_out_at DESC LIMIT 100");
-                            if ($format === 'csv') {
-                                $data = array_map(fn($f) => [$f['display_number'], $f['name'], $f['checked_out_to'], $f['checked_out_at'], $f['expected_return_date'], daysOverdue($f['expected_return_date'])], $currentCheckouts);
-                                exportCSV($data, 'checkout_status_'.date('Y-m-d').'.csv', ['File #','Name','Checked Out To','Date','Expected Return','Days Overdue']);
-                            }
                             $overdueCount = count(array_filter($currentCheckouts, fn($f) => isOverdue($f['expected_return_date'])));
                         ?>
                         <div class="flex justify-between items-center mb-6">
@@ -5161,10 +5172,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     <?php elseif ($report === 'overdue'): ?>
                         <?php
                         $overdueFiles = $db->fetchAll("SELECT f.*, u.name as checked_out_to, u.email as user_email FROM files f LEFT JOIN users u ON f.checked_out_by = u.id WHERE f.is_checked_out = 1 AND f.expected_return_date < DATE('now') ORDER BY f.expected_return_date");
-                        if ($format === 'csv') {
-                            $data = array_map(fn($f) => [$f['display_number'], $f['name'], $f['checked_out_to'], $f['user_email'], $f['expected_return_date'], daysOverdue($f['expected_return_date'])], $overdueFiles);
-                            exportCSV($data, 'overdue_files_'.date('Y-m-d').'.csv', ['File #','Name','Checked Out To','Email','Expected Return','Days Overdue']);
-                        }
                         ?>
                         <div class="flex justify-between items-center mb-6">
                             <div><a href="?page=reports" class="text-blue-600 hover:underline">← Back to Reports</a><h2 class="text-3xl font-bold mt-2">Overdue Files Report</h2></div>
