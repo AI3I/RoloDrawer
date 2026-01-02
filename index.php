@@ -2683,7 +2683,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         <option value="">Select a cabinet...</option>
                                         <?php foreach ($cabinets as $cabinet): ?>
                                             <option value="<?= $cabinet['id'] ?>" data-location="<?= $cabinet['location_id'] ?? '' ?>">
-                                                Cabinet <?= htmlspecialchars($cabinet['cabinet_label']) ?><?= $cabinet['location_name'] ? ' (' . htmlspecialchars($cabinet['location_name']) . ')' : '' ?>
+                                                Cabinet <?= htmlspecialchars($cabinet['cabinet_label']) ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
@@ -4010,7 +4010,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                 <option value="<?= $cabinet['id'] ?>"
                                                         data-location="<?= $cabinet['location_id'] ?? '' ?>"
                                                         <?= $file['current_cabinet_id'] == $cabinet['id'] ? 'selected' : '' ?>>
-                                                    Cabinet <?= htmlspecialchars($cabinet['cabinet_label']) ?><?= $cabinet['location_name'] ? ' (' . htmlspecialchars($cabinet['location_name']) . ')' : '' ?>
+                                                    Cabinet <?= htmlspecialchars($cabinet['cabinet_label']) ?>
                                                 </option>
                                             <?php endforeach; ?>
                                         </select>
