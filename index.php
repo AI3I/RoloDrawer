@@ -1336,7 +1336,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     </div>
 
                     <!-- Secondary Stats Grid -->
-                    <div class="grid grid-cols-5 gap-4 mb-8">
+                    <div class="grid grid-cols-6 gap-4 mb-8">
                         <div class="bg-white p-5 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-blue-500">
                             <div class="flex items-center gap-3">
                                 <div class="text-3xl">🏢</div>
@@ -1370,6 +1370,24 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 <div>
                                     <div class="text-2xl font-bold text-pink-600"><?= $stats['tags'] ?></div>
                                     <div class="text-sm text-gray-600">Tags</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-yellow-500">
+                            <div class="flex items-center gap-3">
+                                <div class="text-3xl">📦</div>
+                                <div>
+                                    <div class="text-2xl font-bold text-yellow-600"><?= $stats['archived'] ?></div>
+                                    <div class="text-sm text-gray-600">Archived</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-gray-500">
+                            <div class="flex items-center gap-3">
+                                <div class="text-3xl">🗑️</div>
+                                <div>
+                                    <div class="text-2xl font-bold text-gray-600"><?= $stats['destroyed'] ?></div>
+                                    <div class="text-sm text-gray-600">Destroyed</div>
                                 </div>
                             </div>
                         </div>
@@ -2199,11 +2217,11 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     $entityFilter = $_GET['entity'] ?? '';
                     $includeArchived = isset($_GET['include_archived']);
 
-                    $sql = "SELECT DISTINCT f.*, u.name as owner_name, c.label as cabinet_label, e.name as entity_name
+                    $sql = "SELECT DISTINCT f.*, u.name as owner_name, c.label as cabinet_label, l.name as location_name, e.name as entity_name
                             FROM files f
                             LEFT JOIN users u ON f.owner_id = u.id
                             LEFT JOIN cabinets c ON f.current_cabinet_id = c.id
-                            LEFT JOIN cabinets c ON d.cabinet_id = c.id
+                            LEFT JOIN locations l ON c.location_id = l.id
                             LEFT JOIN entities e ON f.entity_id = e.id
                             LEFT JOIN file_tags ft ON f.id = ft.file_id
                             WHERE f.is_destroyed = 0";
@@ -2272,7 +2290,18 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             </td>
                                             <td class="px-6 py-4"><?= htmlspecialchars($file['owner_name'] ?? 'N/A') ?></td>
                                             <td class="px-6 py-4"><?= htmlspecialchars($file['entity_name'] ?? 'N/A') ?></td>
-                                            <td class="px-6 py-4"><?= htmlspecialchars($file['cabinet_label'] ? $file['cabinet_label'] . ' (' . $file['vertical_position'] . '/' . $file['horizontal_position'] . ')' : 'Not assigned') ?></td>
+                                            <td class="px-6 py-4">
+                                                <?php if ($file['cabinet_label']): ?>
+                                                    <div class="text-sm">
+                                                        <div><?= htmlspecialchars(($file['location_name'] ?? 'No Location') . ' > Cabinet ' . $file['cabinet_label']) ?></div>
+                                                        <div class="text-xs text-gray-600">
+                                                            <?= htmlspecialchars($file['vertical_position'] . ' / ' . $file['horizontal_position']) ?>
+                                                        </div>
+                                                    </div>
+                                                <?php else: ?>
+                                                    Not assigned
+                                                <?php endif; ?>
+                                            </td>
                                             <td class="px-6 py-4">
                                                 <a href="?page=files&action=view&id=<?= $file['id'] ?>" class="text-blue-600 hover:underline">View</a>
                                             </td>
@@ -3917,12 +3946,13 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     </div>
                     <?php
                     $files = $db->fetchAll("
-                        SELECT f.*, u.name as owner_name, c.label as cabinet_label, e.name as entity_name,
-                               cu.name as checked_out_user_name
+                        SELECT f.*, u.name as owner_name, c.label as cabinet_label, l.name as location_name,
+                               e.name as entity_name, cu.name as checked_out_user_name
                         FROM files f
                         LEFT JOIN users u ON f.owner_id = u.id
                         LEFT JOIN users cu ON f.checked_out_by = cu.id
                         LEFT JOIN cabinets c ON f.current_cabinet_id = c.id
+                        LEFT JOIN locations l ON c.location_id = l.id
                         LEFT JOIN entities e ON f.entity_id = e.id
                         WHERE f.is_archived = 0 AND f.is_destroyed = 0
                         ORDER BY f.created_at DESC
@@ -3962,7 +3992,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             <td class="px-6 py-4">
                                                 <?php if ($file['cabinet_label']): ?>
                                                     <div class="text-sm">
-                                                        <div><?= htmlspecialchars($file['cabinet_label']) ?></div>
+                                                        <div><?= htmlspecialchars(($file['location_name'] ?? 'No Location') . ' > Cabinet ' . $file['cabinet_label']) ?></div>
                                                         <div class="text-xs text-gray-600">
                                                             <?= htmlspecialchars($file['vertical_position'] . ' / ' . $file['horizontal_position']) ?>
                                                         </div>
