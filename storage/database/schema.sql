@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
     status TEXT NOT NULL DEFAULT 'active', -- active, inactive, locked
     failed_login_attempts INTEGER DEFAULT 0,
     last_failed_login TEXT,
+    last_login TEXT,
+    locked_until TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -93,6 +95,8 @@ CREATE TABLE IF NOT EXISTS files (
     sensitivity TEXT DEFAULT 'internal', -- public, internal, confidential, restricted
     owner_id INTEGER NOT NULL,
     current_drawer_id INTEGER,
+    vertical_position TEXT, -- Top, Upper, Lower, Bottom
+    horizontal_position TEXT, -- Front, Center, Back
     entity_id INTEGER,
     is_checked_out INTEGER DEFAULT 0,
     checked_out_by INTEGER,

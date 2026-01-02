@@ -368,11 +368,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sensitivity = $_POST['sensitivity'] ?? 'internal';
         $ownerId = $_SESSION['user_id'];
         $drawerId = !empty($_POST['drawer_id']) ? $_POST['drawer_id'] : null;
+        $verticalPosition = $_POST['vertical_position'] ?? 'Not Specified';
+        $horizontalPosition = $_POST['horizontal_position'] ?? 'Not Specified';
         $entityId = !empty($_POST['entity_id']) ? $_POST['entity_id'] : null;
 
-        $db->query("INSERT INTO files (uuid, display_number, name, description, sensitivity, owner_id, current_drawer_id, entity_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    [$uuid, $displayNumber, $name, $description, $sensitivity, $ownerId, $drawerId, $entityId]);
+        $db->query("INSERT INTO files (uuid, display_number, name, description, sensitivity, owner_id, current_drawer_id, vertical_position, horizontal_position, entity_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [$uuid, $displayNumber, $name, $description, $sensitivity, $ownerId, $drawerId, $verticalPosition, $horizontalPosition, $entityId]);
 
         $fileId = $db->lastInsertId();
 
@@ -395,15 +397,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $description = $_POST['description'] ?? '';
         $sensitivity = $_POST['sensitivity'] ?? 'internal';
         $drawerId = !empty($_POST['drawer_id']) ? $_POST['drawer_id'] : null;
+        $verticalPosition = $_POST['vertical_position'] ?? 'Not Specified';
+        $horizontalPosition = $_POST['horizontal_position'] ?? 'Not Specified';
         $entityId = !empty($_POST['entity_id']) ? $_POST['entity_id'] : null;
 
         // MOVEMENT TRACKING: Fetch current drawer_id before update
         $currentFile = $db->fetchOne("SELECT current_drawer_id FROM files WHERE id = ?", [$id]);
         $oldDrawerId = $currentFile['current_drawer_id'];
 
-        $db->query("UPDATE files SET name = ?, description = ?, sensitivity = ?, current_drawer_id = ?, entity_id = ?, updated_at = CURRENT_TIMESTAMP
+        $db->query("UPDATE files SET name = ?, description = ?, sensitivity = ?, current_drawer_id = ?, vertical_position = ?, horizontal_position = ?, entity_id = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?",
-                    [$name, $description, $sensitivity, $drawerId, $entityId, $id]);
+                    [$name, $description, $sensitivity, $drawerId, $verticalPosition, $horizontalPosition, $entityId, $id]);
 
         // MOVEMENT TRACKING: Log movement if drawer changed
         if ($oldDrawerId != $drawerId) {
@@ -2519,6 +2523,27 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     <?php endforeach; ?>
                                 </select>
                             </div>
+                            <div class="grid grid-cols-2 gap-4 mb-6">
+                                <div>
+                                    <label class="block text-gray-700 mb-2">Vertical Position</label>
+                                    <select name="vertical_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="Not Specified" selected>Not Specified</option>
+                                        <option value="Top">Top</option>
+                                        <option value="Upper">Upper</option>
+                                        <option value="Lower">Lower</option>
+                                        <option value="Bottom">Bottom</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 mb-2">Horizontal Position</label>
+                                    <select name="horizontal_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="Not Specified" selected>Not Specified</option>
+                                        <option value="Front">Front</option>
+                                        <option value="Center">Center</option>
+                                        <option value="Back">Back</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div class="flex gap-2">
                                 <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Create File</button>
                                 <a href="?page=files" class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400">Cancel</a>
@@ -2711,6 +2736,12 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             <div>Location: <?= htmlspecialchars($file['location_name']) ?></div>
                                             <div>Cabinet: <?= htmlspecialchars($file['cabinet_label']) ?></div>
                                             <div>Drawer: <?= htmlspecialchars($file['drawer_label']) ?></div>
+                                            <?php if (!empty($file['vertical_position']) && $file['vertical_position'] !== 'Not Specified'): ?>
+                                                <div>Vertical: <span class="font-medium"><?= htmlspecialchars($file['vertical_position']) ?></span></div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($file['horizontal_position']) && $file['horizontal_position'] !== 'Not Specified'): ?>
+                                                <div>Horizontal: <span class="font-medium"><?= htmlspecialchars($file['horizontal_position']) ?></span></div>
+                                            <?php endif; ?>
                                         </div>
                                     <?php else: ?>
                                         <div class="text-gray-500">Not assigned to a location</div>
@@ -3586,6 +3617,27 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
+                                <div class="grid grid-cols-2 gap-4 mb-6">
+                                    <div>
+                                        <label class="block text-gray-700 mb-2">Vertical Position</label>
+                                        <select name="vertical_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="Not Specified" <?= ($file['vertical_position'] ?? 'Not Specified') === 'Not Specified' ? 'selected' : '' ?>>Not Specified</option>
+                                            <option value="Top" <?= ($file['vertical_position'] ?? '') === 'Top' ? 'selected' : '' ?>>Top</option>
+                                            <option value="Upper" <?= ($file['vertical_position'] ?? '') === 'Upper' ? 'selected' : '' ?>>Upper</option>
+                                            <option value="Lower" <?= ($file['vertical_position'] ?? '') === 'Lower' ? 'selected' : '' ?>>Lower</option>
+                                            <option value="Bottom" <?= ($file['vertical_position'] ?? '') === 'Bottom' ? 'selected' : '' ?>>Bottom</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-700 mb-2">Horizontal Position</label>
+                                        <select name="horizontal_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="Not Specified" <?= ($file['horizontal_position'] ?? 'Not Specified') === 'Not Specified' ? 'selected' : '' ?>>Not Specified</option>
+                                            <option value="Front" <?= ($file['horizontal_position'] ?? '') === 'Front' ? 'selected' : '' ?>>Front</option>
+                                            <option value="Center" <?= ($file['horizontal_position'] ?? '') === 'Center' ? 'selected' : '' ?>>Center</option>
+                                            <option value="Back" <?= ($file['horizontal_position'] ?? '') === 'Back' ? 'selected' : '' ?>>Back</option>
+                                        </select>
+                                    </div>
+                                </div>
                                 <div class="flex gap-2">
                                     <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Update File</button>
                                     <a href="?page=files&action=view&id=<?= $file['id'] ?>" class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400">Cancel</a>
@@ -3650,7 +3702,29 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             <td class="px-6 py-4"><?= htmlspecialchars($file['name']) ?></td>
                                             <td class="px-6 py-4"><?= htmlspecialchars($file['owner_name'] ?? 'N/A') ?></td>
                                             <td class="px-6 py-4"><?= htmlspecialchars($file['entity_name'] ?? 'N/A') ?></td>
-                                            <td class="px-6 py-4"><?= htmlspecialchars(($file['cabinet_label'] ?? '') . ($file['drawer_label'] ? ' - ' . $file['drawer_label'] : 'Not assigned')) ?></td>
+                                            <td class="px-6 py-4">
+                                                <?php if ($file['cabinet_label'] && $file['drawer_label']): ?>
+                                                    <div class="text-sm">
+                                                        <div><?= htmlspecialchars($file['cabinet_label'] . ' - ' . $file['drawer_label']) ?></div>
+                                                        <?php if (!empty($file['vertical_position']) && $file['vertical_position'] !== 'Not Specified' || !empty($file['horizontal_position']) && $file['horizontal_position'] !== 'Not Specified'): ?>
+                                                            <div class="text-xs text-gray-600">
+                                                                <?php
+                                                                $positions = [];
+                                                                if (!empty($file['vertical_position']) && $file['vertical_position'] !== 'Not Specified') {
+                                                                    $positions[] = $file['vertical_position'];
+                                                                }
+                                                                if (!empty($file['horizontal_position']) && $file['horizontal_position'] !== 'Not Specified') {
+                                                                    $positions[] = $file['horizontal_position'];
+                                                                }
+                                                                echo htmlspecialchars(implode(' - ', $positions));
+                                                                ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php else: ?>
+                                                    Not assigned
+                                                <?php endif; ?>
+                                            </td>
                                             <td class="px-6 py-4">
                                                 <?php if ($file['is_checked_out']): ?>
                                                     <?php $overdue = isOverdue($file['expected_return_date']); ?>
