@@ -7,6 +7,19 @@
 // - QR lookup page for scanning codes
 // - Drawer QR codes for location tracking
 // - Mobile-friendly lookup interface
+
+// Configure custom session directory
+$sessionPath = __DIR__ . '/storage/sessions';
+if (!is_dir($sessionPath)) {
+    mkdir($sessionPath, 0700, true);
+}
+session_save_path($sessionPath);
+
+// Configure session cookie parameters for better compatibility
+ini_set('session.cookie_httponly', 1);
+ini_set('session.cookie_samesite', 'Lax');
+ini_set('session.use_strict_mode', 1);
+
 session_start();
 
 // Helper function to generate UUID v4
@@ -72,6 +85,17 @@ if (!$db->isInitialized()) {
 $page = $_GET['page'] ?? 'dashboard';
 $action = $_GET['action'] ?? 'index';
 $id = $_GET['id'] ?? null;
+
+// Handle logout
+if ($page === 'logout') {
+    // Delete session from database
+    if (isset($_SESSION['session_db_id'])) {
+        $db->query("DELETE FROM user_sessions WHERE session_id = ?", [$_SESSION['session_db_id']]);
+    }
+    session_destroy();
+    header('Location: ?page=login');
+    exit;
+}
 
 // Check if logged in
 if (!isset($_SESSION['user_id']) && $page !== 'login') {
@@ -996,6 +1020,10 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $email = $_POST['email'] ?? '';
                 $password = $_POST['password'] ?? '';
+
+                // DEBUG: Log attempt
+                error_log("Login attempt for: $email");
+
                 $user = $db->fetchOne("SELECT * FROM users WHERE email = ?", [$email]);
 
                 if ($user) {
@@ -1006,6 +1034,8 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         $lockedUntil = date('Y-m-d H:i:s', strtotime($user['locked_until']));
                         echo '<div class="bg-red-100 text-red-700 p-3 rounded mb-4">Account is locked until ' . htmlspecialchars($lockedUntil) . '</div>';
                     } elseif (password_verify($password, $user['password'])) {
+                        // DEBUG: Password verified
+                        error_log("Password verified for user ID: " . $user['id']);
                         // Auto-unlock if locked_until has passed
                         if ($user['locked_until'] && strtotime($user['locked_until']) <= time()) {
                             $db->query("UPDATE users SET status = 'active', locked_until = NULL, failed_login_attempts = 0 WHERE id = ?", [$user['id']]);
@@ -1027,6 +1057,12 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         $_SESSION['user_name'] = $user['name'];
                         $_SESSION['user_role'] = $user['role'];
                         $_SESSION['session_db_id'] = $sessionId;
+
+                        // DEBUG: Show what we're setting
+                        error_log("Session set - user_id: {$_SESSION['user_id']}, session_id: " . session_id());
+
+                        // Force session write before redirect
+                        session_write_close();
 
                         header('Location: ?page=dashboard');
                         exit;
@@ -5375,16 +5411,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             <p class="text-gray-600">Report not found. <a href="?page=reports" class="text-blue-600 hover:underline">Return to Reports Dashboard</a></p>
                         </div>
                     <?php endif; ?>
-                <?php elseif ($page === 'logout'): ?>
-                    <?php
-                    // Delete session from database
-                    if (isset($_SESSION['session_db_id'])) {
-                        $db->query("DELETE FROM user_sessions WHERE session_id = ?", [$_SESSION['session_db_id']]);
-                    }
-                    session_destroy();
-                    header('Location: ?page=login');
-                    exit;
-                    ?>
 
                 <?php else: ?>
                     <h2 class="text-3xl font-bold mb-6"><?= ucfirst($page) ?></h2>
