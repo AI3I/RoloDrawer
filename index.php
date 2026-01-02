@@ -1054,7 +1054,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
             <form method="POST">
                 <div class="mb-4">
                     <label class="block text-gray-700 mb-2">Email</label>
-                    <input type="email" name="email" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="admin@example.com">
+                    <input type="email" name="email" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="admin@rolodrawer.local">
                 </div>
                 <div class="mb-6">
                     <label class="block text-gray-700 mb-2">Password</label>
