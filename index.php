@@ -1240,7 +1240,13 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
 
                 <?php if ($page === 'dashboard'): ?>
                     <!-- Dashboard -->
-                    <h2 class="text-3xl font-bold mb-6">Dashboard</h2>
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold">Dashboard</h2>
+                        <div class="text-sm text-gray-600">
+                            Welcome back, <span class="font-semibold"><?= htmlspecialchars($_SESSION['user_name']) ?></span>
+                        </div>
+                    </div>
+
                     <?php
                     $stats = [
                         'files' => $db->fetchOne("SELECT COUNT(*) as count FROM files WHERE is_archived = 0 AND is_destroyed = 0")['count'],
@@ -1250,37 +1256,201 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         'destroyed' => $db->fetchOne("SELECT COUNT(*) as count FROM files WHERE is_destroyed = 1")['count'],
                         'cabinets' => $db->fetchOne("SELECT COUNT(*) as count FROM cabinets")['count'],
                         'locations' => $db->fetchOne("SELECT COUNT(*) as count FROM locations")['count'],
+                        'drawers' => $db->fetchOne("SELECT COUNT(*) as count FROM drawers")['count'],
+                        'tags' => $db->fetchOne("SELECT COUNT(*) as count FROM tags")['count'],
+                        'entities' => $db->fetchOne("SELECT COUNT(*) as count FROM entities")['count'],
                     ];
+
+                    $recentCheckouts = $db->fetchAll("SELECT f.*, u.name as checked_out_to FROM files f LEFT JOIN users u ON f.checked_out_by = u.id WHERE f.is_checked_out = 1 ORDER BY f.checked_out_at DESC LIMIT 5");
+                    $topTags = $db->fetchAll("SELECT t.name, t.color, COUNT(ft.file_id) as usage FROM tags t LEFT JOIN file_tags ft ON t.id = ft.tag_id GROUP BY t.id ORDER BY usage DESC LIMIT 5");
                     ?>
-                    <div class="grid grid-cols-7 gap-4 mb-8">
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <div class="text-3xl font-bold text-blue-600"><?= $stats['files'] ?></div>
-                            <div class="text-gray-600">Total Files</div>
+
+                    <!-- Main Stats Grid -->
+                    <div class="grid grid-cols-3 gap-6 mb-8">
+                        <!-- Files Card -->
+                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-lg shadow-lg text-white hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="text-4xl">📄</div>
+                                <div class="text-right">
+                                    <div class="text-4xl font-bold"><?= $stats['files'] ?></div>
+                                    <div class="text-blue-100 text-sm">Active Files</div>
+                                </div>
+                            </div>
+                            <a href="?page=files" class="text-sm text-blue-100 hover:text-white underline">View all files →</a>
                         </div>
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <div class="text-3xl font-bold text-orange-600"><?= $stats['checked_out'] ?></div>
-                            <div class="text-gray-600">Checked Out</div>
+
+                        <!-- Checked Out Card -->
+                        <div class="bg-gradient-to-br from-orange-500 to-orange-600 p-6 rounded-lg shadow-lg text-white hover:shadow-xl transition-shadow">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="text-4xl">📤</div>
+                                <div class="text-right">
+                                    <div class="text-4xl font-bold"><?= $stats['checked_out'] ?></div>
+                                    <div class="text-orange-100 text-sm">Checked Out</div>
+                                </div>
+                            </div>
+                            <a href="?page=reports&report=checkouts" class="text-sm text-orange-100 hover:text-white underline">View checkouts →</a>
                         </div>
-                        <div class="bg-white p-6 rounded-lg shadow <?= $stats['overdue'] > 0 ? 'border-2 border-red-500' : '' ?>">
-                            <div class="text-3xl font-bold <?= $stats['overdue'] > 0 ? 'text-red-600' : 'text-green-600' ?>"><?= $stats['overdue'] ?></div>
-                            <div class="text-gray-600">Overdue Files</div>
+
+                        <!-- Overdue Card -->
+                        <div class="bg-gradient-to-br from-<?= $stats['overdue'] > 0 ? 'red' : 'green' ?>-500 to-<?= $stats['overdue'] > 0 ? 'red' : 'green' ?>-600 p-6 rounded-lg shadow-lg text-white hover:shadow-xl transition-shadow <?= $stats['overdue'] > 0 ? 'ring-4 ring-red-300 animate-pulse' : '' ?>">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="text-4xl"><?= $stats['overdue'] > 0 ? '⚠️' : '✅' ?></div>
+                                <div class="text-right">
+                                    <div class="text-4xl font-bold"><?= $stats['overdue'] ?></div>
+                                    <div class="text-<?= $stats['overdue'] > 0 ? 'red' : 'green' ?>-100 text-sm">Overdue Files</div>
+                                </div>
+                            </div>
+                            <?php if ($stats['overdue'] > 0): ?>
+                                <a href="?page=reports&report=overdue" class="text-sm text-red-100 hover:text-white underline">View overdue files →</a>
+                            <?php else: ?>
+                                <div class="text-sm text-green-100">All files on time!</div>
+                            <?php endif; ?>
                         </div>
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <div class="text-3xl font-bold text-yellow-600"><?= $stats['archived'] ?></div>
-                            <div class="text-gray-600">Archived Files</div>
+                    </div>
+
+                    <!-- Secondary Stats Grid -->
+                    <div class="grid grid-cols-4 gap-4 mb-8">
+                        <div class="bg-white p-5 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-purple-500">
+                            <div class="flex items-center gap-3">
+                                <div class="text-3xl">📍</div>
+                                <div>
+                                    <div class="text-2xl font-bold text-purple-600"><?= $stats['locations'] ?></div>
+                                    <div class="text-sm text-gray-600">Locations</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="bg-white p-6 rounded-lg shadow border-2 border-red-300">
-                            <div class="text-3xl font-bold text-red-700"><?= $stats['destroyed'] ?></div>
-                            <div class="text-gray-600">Destroyed Files</div>
+                        <div class="bg-white p-5 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-green-500">
+                            <div class="flex items-center gap-3">
+                                <div class="text-3xl">🗄️</div>
+                                <div>
+                                    <div class="text-2xl font-bold text-green-600"><?= $stats['cabinets'] ?></div>
+                                    <div class="text-sm text-gray-600">Cabinets</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <div class="text-3xl font-bold text-green-600"><?= $stats['cabinets'] ?></div>
-                            <div class="text-gray-600">Cabinets</div>
+                        <div class="bg-white p-5 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-indigo-500">
+                            <div class="flex items-center gap-3">
+                                <div class="text-3xl">📦</div>
+                                <div>
+                                    <div class="text-2xl font-bold text-indigo-600"><?= $stats['drawers'] ?></div>
+                                    <div class="text-sm text-gray-600">Drawers</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <div class="text-3xl font-bold text-purple-600"><?= $stats['locations'] ?></div>
-                            <div class="text-gray-600">Locations</div>
+                        <div class="bg-white p-5 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-pink-500">
+                            <div class="flex items-center gap-3">
+                                <div class="text-3xl">🏷️</div>
+                                <div>
+                                    <div class="text-2xl font-bold text-pink-600"><?= $stats['tags'] ?></div>
+                                    <div class="text-sm text-gray-600">Tags</div>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="bg-white rounded-lg shadow p-6 mb-8">
+                        <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+                            <span class="text-2xl">⚡</span> Quick Actions
+                        </h3>
+                        <div class="grid grid-cols-4 gap-4">
+                            <a href="?page=files&action=create" class="flex items-center gap-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors group">
+                                <div class="text-3xl">➕</div>
+                                <div>
+                                    <div class="font-semibold text-blue-700 group-hover:text-blue-800">Add New File</div>
+                                    <div class="text-xs text-gray-600">Create file record</div>
+                                </div>
+                            </a>
+                            <a href="?page=lookup" class="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors group">
+                                <div class="text-3xl">🔍</div>
+                                <div>
+                                    <div class="font-semibold text-green-700 group-hover:text-green-800">Find a File</div>
+                                    <div class="text-xs text-gray-600">Search or scan QR</div>
+                                </div>
+                            </a>
+                            <a href="?page=locations" class="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors group">
+                                <div class="text-3xl">🗺️</div>
+                                <div>
+                                    <div class="font-semibold text-purple-700 group-hover:text-purple-800">Browse Locations</div>
+                                    <div class="text-xs text-gray-600">View hierarchy</div>
+                                </div>
+                            </a>
+                            <a href="?page=reports" class="flex items-center gap-3 p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors group">
+                                <div class="text-3xl">📊</div>
+                                <div>
+                                    <div class="font-semibold text-orange-700 group-hover:text-orange-800">View Reports</div>
+                                    <div class="text-xs text-gray-600">Analytics & exports</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Two Column Layout for Recent Activity -->
+                    <div class="grid grid-cols-2 gap-6 mb-8">
+                        <!-- Recent Checkouts -->
+                        <?php if (!empty($recentCheckouts)): ?>
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="text-xl font-bold flex items-center gap-2">
+                                        <span class="text-2xl">📤</span> Recent Checkouts
+                                    </h3>
+                                    <a href="?page=reports&report=checkouts" class="text-blue-600 hover:underline text-sm">View All</a>
+                                </div>
+                                <div class="space-y-2">
+                                    <?php foreach ($recentCheckouts as $c): ?>
+                                        <div class="flex items-start gap-3 p-3 hover:bg-gray-50 rounded border-l-4 <?= isOverdue($c['expected_return_date']) ? 'border-red-500 bg-red-50' : 'border-blue-500' ?>">
+                                            <div class="flex-1">
+                                                <div class="font-medium text-sm">
+                                                    <span class="font-mono text-gray-600">#<?= htmlspecialchars($c['display_number']) ?></span>
+                                                    <span class="ml-2"><?= htmlspecialchars($c['name']) ?></span>
+                                                </div>
+                                                <div class="text-xs text-gray-600 mt-1">
+                                                    Checked out to: <span class="font-medium"><?= htmlspecialchars($c['checked_out_to']) ?></span>
+                                                </div>
+                                                <?php if ($c['expected_return_date']): ?>
+                                                    <div class="text-xs mt-1 <?= isOverdue($c['expected_return_date']) ? 'text-red-600 font-semibold' : 'text-gray-500' ?>">
+                                                        Due: <?= date('M j, Y', strtotime($c['expected_return_date'])) ?>
+                                                        <?php if (isOverdue($c['expected_return_date'])): ?>
+                                                            <span class="ml-1">(<?= daysOverdue($c['expected_return_date']) ?> days overdue)</span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Top Tags -->
+                        <?php if (!empty($topTags)): ?>
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="text-xl font-bold flex items-center gap-2">
+                                        <span class="text-2xl">🏷️</span> Most Used Tags
+                                    </h3>
+                                    <a href="?page=tags" class="text-blue-600 hover:underline text-sm">View All</a>
+                                </div>
+                                <div class="space-y-3">
+                                    <?php $maxUsage = max(array_column($topTags, 'usage')); ?>
+                                    <?php foreach ($topTags as $tag): ?>
+                                        <?php $percentage = $maxUsage > 0 ? ($tag['usage'] / $maxUsage * 100) : 0; ?>
+                                        <div>
+                                            <div class="flex justify-between items-center mb-1">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="inline-block w-4 h-4 rounded" style="background-color: <?= htmlspecialchars($tag['color']) ?>"></span>
+                                                    <span class="font-medium text-sm"><?= htmlspecialchars($tag['name']) ?></span>
+                                                </div>
+                                                <span class="text-sm text-gray-600"><?= $tag['usage'] ?> files</span>
+                                            </div>
+                                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                                <div class="h-2 rounded-full transition-all" style="width: <?= $percentage ?>%; background-color: <?= htmlspecialchars($tag['color']) ?>"></div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
 
                     <!-- Recent Movements Widget -->
