@@ -519,50 +519,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // BACKUP DOWNLOAD
-    if ($page === 'settings' && $action === 'backup_download' && isset($_GET['file'])) {
-        // Admin only
-        if ($_SESSION['user_role'] !== 'admin') {
-            die('Unauthorized');
-        }
-
-        $filename = basename($_GET['file']); // Security: prevent directory traversal
-        $backupPath = __DIR__ . '/storage/backups/' . $filename;
-
-        if (file_exists($backupPath) && preg_match('/^rolodrawer_backup_[\d\-_]+\.sqlite$/', $filename)) {
-            header('Content-Type: application/octet-stream');
-            header('Content-Disposition: attachment; filename="' . $filename . '"');
-            header('Content-Length: ' . filesize($backupPath));
-            readfile($backupPath);
-            exit;
-        } else {
-            die('Backup file not found');
-        }
-    }
-
-    // BACKUP DELETE
-    if ($page === 'settings' && $action === 'backup_delete' && isset($_GET['file'])) {
-        // Admin only
-        if ($_SESSION['user_role'] !== 'admin') {
-            $message = "Unauthorized";
-            $messageType = "error";
-        } else {
-            $filename = basename($_GET['file']); // Security: prevent directory traversal
-            $backupPath = __DIR__ . '/storage/backups/' . $filename;
-
-            if (file_exists($backupPath) && preg_match('/^rolodrawer_backup_[\d\-_]+\.sqlite$/', $filename)) {
-                unlink($backupPath);
-                $message = "Backup deleted successfully";
-                $messageType = "success";
-            } else {
-                $message = "Backup file not found";
-                $messageType = "error";
-            }
-            header("Location: ?page=settings&message=" . urlencode($message) . "&type=" . $messageType);
-            exit;
-        }
-    }
-
     // BACKUP RESTORE
     if ($page === 'settings' && $action === 'backup_restore') {
         // Admin only
@@ -1074,6 +1030,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
         }
+    }
+}
+
+// Handle GET requests for backup operations
+// BACKUP DOWNLOAD
+if ($page === 'settings' && $action === 'backup_download' && isset($_GET['file'])) {
+    // Admin only
+    if ($_SESSION['user_role'] !== 'admin') {
+        die('Unauthorized');
+    }
+
+    $filename = basename($_GET['file']); // Security: prevent directory traversal
+    $backupPath = __DIR__ . '/storage/backups/' . $filename;
+
+    if (file_exists($backupPath) && (preg_match('/^rolodrawer_backup_[\d\-_]+\.sqlite$/', $filename) || preg_match('/^pre_restore_[\d\-_]+\.sqlite$/', $filename))) {
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . filesize($backupPath));
+        readfile($backupPath);
+        exit;
+    } else {
+        die('Backup file not found');
+    }
+}
+
+// BACKUP DELETE
+if ($page === 'settings' && $action === 'backup_delete' && isset($_GET['file'])) {
+    // Admin only
+    if ($_SESSION['user_role'] !== 'admin') {
+        $message = "Unauthorized";
+        $messageType = "error";
+    } else {
+        $filename = basename($_GET['file']); // Security: prevent directory traversal
+        $backupPath = __DIR__ . '/storage/backups/' . $filename;
+
+        if (file_exists($backupPath) && (preg_match('/^rolodrawer_backup_[\d\-_]+\.sqlite$/', $filename) || preg_match('/^pre_restore_[\d\-_]+\.sqlite$/', $filename))) {
+            unlink($backupPath);
+            $message = "Backup deleted successfully";
+            $messageType = "success";
+        } else {
+            $message = "Backup file not found";
+            $messageType = "error";
+        }
+        header("Location: ?page=settings&message=" . urlencode($message) . "&type=" . $messageType);
+        exit;
     }
 }
 
