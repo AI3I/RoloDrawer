@@ -3580,18 +3580,6 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             </div>
                         <?php endif; ?>
 
-                        <!-- DEBUG: Archive Section Conditions -->
-                        <div class="bg-yellow-100 border border-yellow-400 p-4 rounded mb-4">
-                            <h4 class="font-bold mb-2">🔍 DEBUG: Archive Section Visibility Check</h4>
-                            <div class="text-sm space-y-1">
-                                <div><strong>File is_archived value:</strong> <?= var_export($file['is_archived'], true) ?></div>
-                                <div><strong>empty($file['is_archived']):</strong> <?= var_export(empty($file['is_archived']), true) ?></div>
-                                <div><strong>User role:</strong> <?= htmlspecialchars($_SESSION['user_role'] ?? 'NOT SET') ?></div>
-                                <div><strong>in_array check:</strong> <?= var_export(in_array($_SESSION['user_role'], ['admin', 'user']), true) ?></div>
-                                <div><strong>Both conditions met:</strong> <?= var_export(empty($file['is_archived']) && in_array($_SESSION['user_role'], ['admin', 'user']), true) ?></div>
-                            </div>
-                        </div>
-
                         <?php if (empty($file['is_archived']) && in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
                             <!-- Archive File Section -->
                             <div class="bg-white rounded-lg shadow p-6 mb-6" x-data="{ showArchiveForm: false }">
