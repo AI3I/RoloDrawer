@@ -121,9 +121,9 @@ if ($format === 'csv' && $page === 'reports') {
     }
 
     if ($report === 'by_location') {
-        $files = $db->fetchAll("SELECT f.*, d.label as drawer_label, c.label as cabinet_label, l.name as location_name, e.name as entity_name, u.name as owner_name FROM files f LEFT JOIN drawers d ON f.current_drawer_id = d.id LEFT JOIN cabinets c ON d.cabinet_id = c.id LEFT JOIN locations l ON c.location_id = l.id LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN users u ON f.owner_id = u.id WHERE f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY l.name, c.label, d.label");
-        $data = array_map(fn($f) => [$f['location_name'] ?: 'No Location', $f['cabinet_label'] ?: 'No Cabinet', $f['drawer_label'] ?: 'No Drawer', $f['display_number'], $f['name'], $f['owner_name'], $f['sensitivity']], $files);
-        exportCSV($data, 'files_by_location_'.date('Y-m-d').'.csv', ['Location','Cabinet','Drawer','File #','Name','Owner','Sensitivity']);
+        $files = $db->fetchAll("SELECT f.*, c.label as cabinet_label, l.name as location_name, e.name as entity_name, u.name as owner_name FROM files f LEFT JOIN cabinets c ON f.current_cabinet_id = c.id LEFT JOIN locations l ON c.location_id = l.id LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN users u ON f.owner_id = u.id WHERE f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY l.name, c.label, f.vertical_position");
+        $data = array_map(fn($f) => [$f['location_name'] ?: 'No Location', $f['cabinet_label'] ?: 'No Cabinet', $f['vertical_position'] ?: 'Not Specified', $f['horizontal_position'] ?: 'Not Specified', $f['display_number'], $f['name'], $f['owner_name'], $f['sensitivity']], $files);
+        exportCSV($data, 'files_by_location_'.date('Y-m-d').'.csv', ['Location','Cabinet','Vertical','Horizontal','File #','Name','Owner','Sensitivity']);
     } elseif ($report === 'by_entity') {
         $files = $db->fetchAll("SELECT f.*, e.name as entity_name, u.name as owner_name FROM files f LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN users u ON f.owner_id = u.id WHERE f.is_destroyed = 0 ORDER BY e.name, f.display_number");
         $data = array_map(fn($f) => [$f['entity_name'] ?: 'No Entity', $f['display_number'], $f['name'], $f['owner_name'], $f['sensitivity'], $f['is_archived'] ? 'Yes' : 'No'], $files);
@@ -367,14 +367,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $description = $_POST['description'] ?? '';
         $sensitivity = $_POST['sensitivity'] ?? 'internal';
         $ownerId = $_SESSION['user_id'];
-        $drawerId = !empty($_POST['drawer_id']) ? $_POST['drawer_id'] : null;
+        $cabinetId = !empty($_POST['cabinet_id']) ? $_POST['cabinet_id'] : null;
         $verticalPosition = $_POST['vertical_position'] ?? 'Not Specified';
         $horizontalPosition = $_POST['horizontal_position'] ?? 'Not Specified';
         $entityId = !empty($_POST['entity_id']) ? $_POST['entity_id'] : null;
 
-        $db->query("INSERT INTO files (uuid, display_number, name, description, sensitivity, owner_id, current_drawer_id, vertical_position, horizontal_position, entity_id)
+        $db->query("INSERT INTO files (uuid, display_number, name, description, sensitivity, owner_id, current_cabinet_id, vertical_position, horizontal_position, entity_id)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    [$uuid, $displayNumber, $name, $description, $sensitivity, $ownerId, $drawerId, $verticalPosition, $horizontalPosition, $entityId]);
+                    [$uuid, $displayNumber, $name, $description, $sensitivity, $ownerId, $cabinetId, $verticalPosition, $horizontalPosition, $entityId]);
 
         $fileId = $db->lastInsertId();
 
@@ -396,24 +396,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = $_POST['name'] ?? '';
         $description = $_POST['description'] ?? '';
         $sensitivity = $_POST['sensitivity'] ?? 'internal';
-        $drawerId = !empty($_POST['drawer_id']) ? $_POST['drawer_id'] : null;
+        $cabinetId = !empty($_POST['cabinet_id']) ? $_POST['cabinet_id'] : null;
         $verticalPosition = $_POST['vertical_position'] ?? 'Not Specified';
         $horizontalPosition = $_POST['horizontal_position'] ?? 'Not Specified';
         $entityId = !empty($_POST['entity_id']) ? $_POST['entity_id'] : null;
 
-        // MOVEMENT TRACKING: Fetch current drawer_id before update
-        $currentFile = $db->fetchOne("SELECT current_drawer_id FROM files WHERE id = ?", [$id]);
-        $oldDrawerId = $currentFile['current_drawer_id'];
+        // MOVEMENT TRACKING: Fetch current cabinet_id before update
+        $currentFile = $db->fetchOne("SELECT current_cabinet_id FROM files WHERE id = ?", [$id]);
+        $oldCabinetId = $currentFile['current_cabinet_id'];
 
-        $db->query("UPDATE files SET name = ?, description = ?, sensitivity = ?, current_drawer_id = ?, vertical_position = ?, horizontal_position = ?, entity_id = ?, updated_at = CURRENT_TIMESTAMP
+        $db->query("UPDATE files SET name = ?, description = ?, sensitivity = ?, current_cabinet_id = ?, vertical_position = ?, horizontal_position = ?, entity_id = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?",
-                    [$name, $description, $sensitivity, $drawerId, $verticalPosition, $horizontalPosition, $entityId, $id]);
+                    [$name, $description, $sensitivity, $cabinetId, $verticalPosition, $horizontalPosition, $entityId, $id]);
 
-        // MOVEMENT TRACKING: Log movement if drawer changed
-        if ($oldDrawerId != $drawerId) {
-            $db->query("INSERT INTO file_movements (file_id, from_drawer_id, to_drawer_id, moved_by, notes, moved_at)
+        // MOVEMENT TRACKING: Log movement if cabinet changed
+        if ($oldCabinetId != $cabinetId) {
+            $db->query("INSERT INTO file_movements (file_id, from_cabinet_id, to_cabinet_id, moved_by, notes, moved_at)
                        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
-                       [$id, $oldDrawerId, $drawerId, $_SESSION['user_id'], 'Moved via edit form']);
+                       [$id, $oldCabinetId, $cabinetId, $_SESSION['user_id'], 'Moved via edit form']);
         }
 
         // Update tags - remove old ones and add new ones
@@ -1463,16 +1463,14 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         SELECT fm.*,
                                f.display_number, f.name as file_name,
                                u.name as moved_by_name,
-                               l_from.name as from_location_name, c_from.label as from_cabinet_label, d_from.label as from_drawer_label,
-                               l_to.name as to_location_name, c_to.label as to_cabinet_label, d_to.label as to_drawer_label
+                               l_from.name as from_location_name, c_from.label as from_cabinet_label,
+                               l_to.name as to_location_name, c_to.label as to_cabinet_label
                         FROM file_movements fm
                         LEFT JOIN files f ON fm.file_id = f.id
                         LEFT JOIN users u ON fm.moved_by = u.id
-                        LEFT JOIN drawers d_from ON fm.from_drawer_id = d_from.id
-                        LEFT JOIN cabinets c_from ON d_from.cabinet_id = c_from.id
+                        LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
                         LEFT JOIN locations l_from ON c_from.location_id = l_from.id
-                        LEFT JOIN drawers d_to ON fm.to_drawer_id = d_to.id
-                        LEFT JOIN cabinets c_to ON d_to.cabinet_id = c_to.id
+                        LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
                         LEFT JOIN locations l_to ON c_to.location_id = l_to.id
                         ORDER BY fm.moved_at DESC
                         LIMIT 5
@@ -1502,7 +1500,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                 <div class="text-sm text-gray-600 mt-1">
                                                     <span class="font-medium">From:</span>
                                                     <?php if ($m['from_location_name']): ?>
-                                                        <?= htmlspecialchars($m['from_location_name'] . ' > ' . $m['from_cabinet_label'] . ' > ' . $m['from_drawer_label']) ?>
+                                                        <?= htmlspecialchars($m['from_location_name'] . ' > Cabinet ' . $m['from_cabinet_label']) ?>
                                                     <?php else: ?>
                                                         <span class="italic">Unassigned</span>
                                                     <?php endif; ?>
@@ -1510,7 +1508,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                 <div class="text-sm text-gray-600">
                                                     <span class="font-medium">To:</span>
                                                     <?php if ($m['to_location_name']): ?>
-                                                        <?= htmlspecialchars($m['to_location_name'] . ' > ' . $m['to_cabinet_label'] . ' > ' . $m['to_drawer_label']) ?>
+                                                        <?= htmlspecialchars($m['to_location_name'] . ' > Cabinet ' . $m['to_cabinet_label']) ?>
                                                     <?php else: ?>
                                                         <span class="italic">Unassigned</span>
                                                     <?php endif; ?>
@@ -1763,14 +1761,14 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 $userMovements = $db->fetchAll("
                                     SELECT fm.*,
                                            f.display_number, f.name as file_name,
-                                           l_from.name as from_location_name, c_from.label as from_cabinet_label, d_from.label as from_drawer_label,
-                                           l_to.name as to_location_name, c_to.label as to_cabinet_label, d_to.label as to_drawer_label
+                                           l_from.name as from_location_name, c_from.label as from_cabinet_label, c_from.label as from_cabinet_label,
+                                           l_to.name as to_location_name, c_to.label as to_cabinet_label, c_to.label as to_cabinet_label
                                     FROM file_movements fm
                                     LEFT JOIN files f ON fm.file_id = f.id
-                                    LEFT JOIN drawers d_from ON fm.from_drawer_id = d_from.id
+                                    LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
                                     LEFT JOIN cabinets c_from ON d_from.cabinet_id = c_from.id
                                     LEFT JOIN locations l_from ON c_from.location_id = l_from.id
-                                    LEFT JOIN drawers d_to ON fm.to_drawer_id = d_to.id
+                                    LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
                                     LEFT JOIN cabinets c_to ON d_to.cabinet_id = c_to.id
                                     LEFT JOIN locations l_to ON c_to.location_id = l_to.id
                                     WHERE fm.moved_by = ?
@@ -1806,7 +1804,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                                 <div>
                                                                     <span class="font-medium">From:</span>
                                                                     <?php if ($m['from_location_name']): ?>
-                                                                        <?= htmlspecialchars($m['from_location_name'] . ' > ' . $m['from_drawer_label']) ?>
+                                                                        <?= htmlspecialchars($m['from_location_name'] . ' > ' . $m['from_cabinet_label']) ?>
                                                                     <?php else: ?>
                                                                         <span class="italic">Unassigned</span>
                                                                     <?php endif; ?>
@@ -1814,7 +1812,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                                 <div>
                                                                     <span class="font-medium">To:</span>
                                                                     <?php if ($m['to_location_name']): ?>
-                                                                        <?= htmlspecialchars($m['to_location_name'] . ' > ' . $m['to_drawer_label']) ?>
+                                                                        <?= htmlspecialchars($m['to_location_name'] . ' > ' . $m['to_cabinet_label']) ?>
                                                                     <?php else: ?>
                                                                         <span class="italic">Unassigned</span>
                                                                     <?php endif; ?>
@@ -2178,10 +2176,10 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     $entityFilter = $_GET['entity'] ?? '';
                     $includeArchived = isset($_GET['include_archived']);
 
-                    $sql = "SELECT DISTINCT f.*, u.name as owner_name, d.label as drawer_label, c.label as cabinet_label, e.name as entity_name
+                    $sql = "SELECT DISTINCT f.*, u.name as owner_name, c.label as cabinet_label, e.name as entity_name
                             FROM files f
                             LEFT JOIN users u ON f.owner_id = u.id
-                            LEFT JOIN drawers d ON f.current_drawer_id = d.id
+                            LEFT JOIN cabinets c ON f.current_cabinet_id = c.id
                             LEFT JOIN cabinets c ON d.cabinet_id = c.id
                             LEFT JOIN entities e ON f.entity_id = e.id
                             LEFT JOIN file_tags ft ON f.id = ft.file_id
@@ -2504,34 +2502,33 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 </div>
                             </div>
                             <div class="mb-6">
-                                <label class="block text-gray-700 mb-2">Assign to Drawer (optional)</label>
-                                <select name="drawer_id" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <label class="block text-gray-700 mb-2">Assign to Cabinet (optional)</label>
+                                <select name="cabinet_id" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <option value="">Not assigned</option>
                                     <?php
-                                    $drawers = $db->fetchAll("
-                                        SELECT d.id, d.label as drawer_label, c.label as cabinet_label, l.name as location_name
-                                        FROM drawers d
-                                        JOIN cabinets c ON d.cabinet_id = c.id
+                                    $cabinets = $db->fetchAll("
+                                        SELECT c.id, c.label as cabinet_label, l.name as location_name
+                                        FROM cabinets c
                                         LEFT JOIN locations l ON c.location_id = l.id
-                                        ORDER BY l.name, c.label, d.position
+                                        ORDER BY l.name, c.label
                                     ");
-                                    foreach ($drawers as $drawer):
+                                    foreach ($cabinets as $cabinet):
                                     ?>
-                                        <option value="<?= $drawer['id'] ?>">
-                                            <?= htmlspecialchars(($drawer['location_name'] ?? 'No Location') . ' > ' . $drawer['cabinet_label'] . ' > Drawer ' . $drawer['drawer_label']) ?>
+                                        <option value="<?= $cabinet['id'] ?>">
+                                            <?= htmlspecialchars(($cabinet['location_name'] ?? 'No Location') . ' > Cabinet ' . $cabinet['cabinet_label']) ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
                             <div class="grid grid-cols-2 gap-4 mb-6">
                                 <div>
-                                    <label class="block text-gray-700 mb-2">Vertical Position</label>
+                                    <label class="block text-gray-700 mb-2">Vertical Position (which drawer)</label>
                                     <select name="vertical_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                         <option value="Not Specified" selected>Not Specified</option>
-                                        <option value="Top">Top</option>
-                                        <option value="Upper">Upper</option>
-                                        <option value="Lower">Lower</option>
-                                        <option value="Bottom">Bottom</option>
+                                        <option value="Top">Top Drawer</option>
+                                        <option value="Upper">Upper Drawer</option>
+                                        <option value="Lower">Lower Drawer</option>
+                                        <option value="Bottom">Bottom Drawer</option>
                                     </select>
                                 </div>
                                 <div>
@@ -2555,15 +2552,14 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     <!-- View File Detail with Tags, Entity, and Related Files -->
                     <?php
                     $file = $db->fetchOne("
-                        SELECT f.*, u.name as owner_name, d.label as drawer_label, d.id as drawer_id,
+                        SELECT f.*, u.name as owner_name,
                                c.label as cabinet_label, c.id as cabinet_id, l.name as location_name, l.id as location_id,
                                e.name as entity_name, e.description as entity_description, e.contact_info as entity_contact,
                                cu.name as checked_out_user_name, cu.id as checked_out_user_id
                         FROM files f
                         LEFT JOIN users u ON f.owner_id = u.id
                         LEFT JOIN users cu ON f.checked_out_by = cu.id
-                        LEFT JOIN drawers d ON f.current_drawer_id = d.id
-                        LEFT JOIN cabinets c ON d.cabinet_id = c.id
+                        LEFT JOIN cabinets c ON f.current_cabinet_id = c.id
                         LEFT JOIN locations l ON c.location_id = l.id
                         LEFT JOIN entities e ON f.entity_id = e.id
                         WHERE f.id = ?
@@ -2735,12 +2731,11 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         <div class="text-sm space-y-1">
                                             <div>Location: <?= htmlspecialchars($file['location_name']) ?></div>
                                             <div>Cabinet: <?= htmlspecialchars($file['cabinet_label']) ?></div>
-                                            <div>Drawer: <?= htmlspecialchars($file['drawer_label']) ?></div>
                                             <?php if (!empty($file['vertical_position']) && $file['vertical_position'] !== 'Not Specified'): ?>
-                                                <div>Vertical: <span class="font-medium"><?= htmlspecialchars($file['vertical_position']) ?></span></div>
+                                                <div>Drawer: <span class="font-medium"><?= htmlspecialchars($file['vertical_position']) ?></span></div>
                                             <?php endif; ?>
                                             <?php if (!empty($file['horizontal_position']) && $file['horizontal_position'] !== 'Not Specified'): ?>
-                                                <div>Horizontal: <span class="font-medium"><?= htmlspecialchars($file['horizontal_position']) ?></span></div>
+                                                <div>Position: <span class="font-medium"><?= htmlspecialchars($file['horizontal_position']) ?></span></div>
                                             <?php endif; ?>
                                         </div>
                                     <?php else: ?>
@@ -3039,7 +3034,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                 <option value="">Select a drawer...</option>
                                                 <?php
                                                 $allDrawers = $db->fetchAll("
-                                                    SELECT d.id, d.label as drawer_label, c.label as cabinet_label, l.name as location_name
+                                                    SELECT d.id, c.label as cabinet_label, l.name as location_name
                                                     FROM drawers d
                                                     JOIN cabinets c ON d.cabinet_id = c.id
                                                     LEFT JOIN locations l ON c.location_id = l.id
@@ -3077,7 +3072,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                 <option value="">Select a drawer...</option>
                                                 <?php
                                                 $allDrawers = $db->fetchAll("
-                                                    SELECT d.id, d.label as drawer_label, c.label as cabinet_label, l.name as location_name
+                                                    SELECT d.id, c.label as cabinet_label, l.name as location_name
                                                     FROM drawers d
                                                     JOIN cabinets c ON d.cabinet_id = c.id
                                                     LEFT JOIN locations l ON c.location_id = l.id
@@ -3110,14 +3105,14 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         $movementHistory = $db->fetchAll("
                             SELECT fm.*,
                                    u.name as moved_by_name,
-                                   l_from.name as from_location_name, c_from.label as from_cabinet_label, d_from.label as from_drawer_label,
-                                   l_to.name as to_location_name, c_to.label as to_cabinet_label, d_to.label as to_drawer_label
+                                   l_from.name as from_location_name, c_from.label as from_cabinet_label, c_from.label as from_cabinet_label,
+                                   l_to.name as to_location_name, c_to.label as to_cabinet_label, c_to.label as to_cabinet_label
                             FROM file_movements fm
                             LEFT JOIN users u ON fm.moved_by = u.id
-                            LEFT JOIN drawers d_from ON fm.from_drawer_id = d_from.id
+                            LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
                             LEFT JOIN cabinets c_from ON d_from.cabinet_id = c_from.id
                             LEFT JOIN locations l_from ON c_from.location_id = l_from.id
-                            LEFT JOIN drawers d_to ON fm.to_drawer_id = d_to.id
+                            LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
                             LEFT JOIN cabinets c_to ON d_to.cabinet_id = c_to.id
                             LEFT JOIN locations l_to ON c_to.location_id = l_to.id
                             WHERE fm.file_id = ?
@@ -3151,14 +3146,14 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                     <td class="px-4 py-2 whitespace-nowrap"><?= date('M j, Y g:i A', strtotime($movement['moved_at'])) ?></td>
                                                     <td class="px-4 py-2">
                                                         <?php if ($movement['from_location_name']): ?>
-                                                            <span class="text-xs"><?= htmlspecialchars($movement['from_location_name'] . ' > ' . $movement['from_cabinet_label'] . ' > ' . $movement['from_drawer_label']) ?></span>
+                                                            <span class="text-xs"><?= htmlspecialchars($movement['from_location_name'] . ' > ' . $movement['from_cabinet_label'] . ' > ' . $movement['from_cabinet_label']) ?></span>
                                                         <?php else: ?>
                                                             <span class="text-gray-400 italic">Unassigned</span>
                                                         <?php endif; ?>
                                                     </td>
                                                     <td class="px-4 py-2">
                                                         <?php if ($movement['to_location_name']): ?>
-                                                            <span class="text-xs"><?= htmlspecialchars($movement['to_location_name'] . ' > ' . $movement['to_cabinet_label'] . ' > ' . $movement['to_drawer_label']) ?></span>
+                                                            <span class="text-xs"><?= htmlspecialchars($movement['to_location_name'] . ' > ' . $movement['to_cabinet_label'] . ' > ' . $movement['to_cabinet_label']) ?></span>
                                                         <?php else: ?>
                                                             <span class="text-gray-400 italic">Unassigned</span>
                                                         <?php endif; ?>
@@ -3598,34 +3593,33 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     </div>
                                 </div>
                                 <div class="mb-6">
-                                    <label class="block text-gray-700 mb-2">Assign to Drawer</label>
-                                    <select name="drawer_id" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <label class="block text-gray-700 mb-2">Assign to Cabinet</label>
+                                    <select name="cabinet_id" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                         <option value="">Not assigned</option>
                                         <?php
-                                        $drawers = $db->fetchAll("
-                                            SELECT d.id, d.label as drawer_label, c.label as cabinet_label, l.name as location_name
-                                            FROM drawers d
-                                            JOIN cabinets c ON d.cabinet_id = c.id
+                                        $cabinets = $db->fetchAll("
+                                            SELECT c.id, c.label as cabinet_label, l.name as location_name
+                                            FROM cabinets c
                                             LEFT JOIN locations l ON c.location_id = l.id
-                                            ORDER BY l.name, c.label, d.position
+                                            ORDER BY l.name, c.label
                                         ");
-                                        foreach ($drawers as $drawer):
+                                        foreach ($cabinets as $cabinet):
                                         ?>
-                                            <option value="<?= $drawer['id'] ?>" <?= $file['current_drawer_id'] == $drawer['id'] ? 'selected' : '' ?>>
-                                                <?= htmlspecialchars(($drawer['location_name'] ?? 'No Location') . ' > ' . $drawer['cabinet_label'] . ' > Drawer ' . $drawer['drawer_label']) ?>
+                                            <option value="<?= $cabinet['id'] ?>" <?= $file['current_cabinet_id'] == $cabinet['id'] ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars(($cabinet['location_name'] ?? 'No Location') . ' > Cabinet ' . $cabinet['cabinet_label']) ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4 mb-6">
                                     <div>
-                                        <label class="block text-gray-700 mb-2">Vertical Position</label>
+                                        <label class="block text-gray-700 mb-2">Vertical Position (which drawer)</label>
                                         <select name="vertical_position" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                             <option value="Not Specified" <?= ($file['vertical_position'] ?? 'Not Specified') === 'Not Specified' ? 'selected' : '' ?>>Not Specified</option>
-                                            <option value="Top" <?= ($file['vertical_position'] ?? '') === 'Top' ? 'selected' : '' ?>>Top</option>
-                                            <option value="Upper" <?= ($file['vertical_position'] ?? '') === 'Upper' ? 'selected' : '' ?>>Upper</option>
-                                            <option value="Lower" <?= ($file['vertical_position'] ?? '') === 'Lower' ? 'selected' : '' ?>>Lower</option>
-                                            <option value="Bottom" <?= ($file['vertical_position'] ?? '') === 'Bottom' ? 'selected' : '' ?>>Bottom</option>
+                                            <option value="Top" <?= ($file['vertical_position'] ?? '') === 'Top' ? 'selected' : '' ?>>Top Drawer</option>
+                                            <option value="Upper" <?= ($file['vertical_position'] ?? '') === 'Upper' ? 'selected' : '' ?>>Upper Drawer</option>
+                                            <option value="Lower" <?= ($file['vertical_position'] ?? '') === 'Lower' ? 'selected' : '' ?>>Lower Drawer</option>
+                                            <option value="Bottom" <?= ($file['vertical_position'] ?? '') === 'Bottom' ? 'selected' : '' ?>>Bottom Drawer</option>
                                         </select>
                                     </div>
                                     <div>
@@ -3659,13 +3653,12 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     </div>
                     <?php
                     $files = $db->fetchAll("
-                        SELECT f.*, u.name as owner_name, d.label as drawer_label, c.label as cabinet_label, e.name as entity_name,
+                        SELECT f.*, u.name as owner_name, c.label as cabinet_label, e.name as entity_name,
                                cu.name as checked_out_user_name
                         FROM files f
                         LEFT JOIN users u ON f.owner_id = u.id
                         LEFT JOIN users cu ON f.checked_out_by = cu.id
-                        LEFT JOIN drawers d ON f.current_drawer_id = d.id
-                        LEFT JOIN cabinets c ON d.cabinet_id = c.id
+                        LEFT JOIN cabinets c ON f.current_cabinet_id = c.id
                         LEFT JOIN entities e ON f.entity_id = e.id
                         WHERE f.is_archived = 0 AND f.is_destroyed = 0
                         ORDER BY f.created_at DESC
@@ -3764,7 +3757,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         <option value="">Select a drawer...</option>
                                         <?php
                                         $allDrawersForBulk = $db->fetchAll("
-                                            SELECT d.id, d.label as drawer_label, c.label as cabinet_label, l.name as location_name
+                                            SELECT d.id, c.label as cabinet_label, l.name as location_name
                                             FROM drawers d
                                             JOIN cabinets c ON d.cabinet_id = c.id
                                             LEFT JOIN locations l ON c.location_id = l.id
@@ -3962,15 +3955,15 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             SELECT fm.*,
                                    f.display_number, f.name as file_name,
                                    u.name as moved_by_name,
-                                   l_from.name as from_location_name, c_from.label as from_cabinet_label, d_from.label as from_drawer_label,
-                                   l_to.name as to_location_name, c_to.label as to_cabinet_label, d_to.label as to_drawer_label
+                                   l_from.name as from_location_name, c_from.label as from_cabinet_label, c_from.label as from_cabinet_label,
+                                   l_to.name as to_location_name, c_to.label as to_cabinet_label, c_to.label as to_cabinet_label
                             FROM file_movements fm
                             LEFT JOIN files f ON fm.file_id = f.id
                             LEFT JOIN users u ON fm.moved_by = u.id
-                            LEFT JOIN drawers d_from ON fm.from_drawer_id = d_from.id
+                            LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
                             LEFT JOIN cabinets c_from ON d_from.cabinet_id = c_from.id
                             LEFT JOIN locations l_from ON c_from.location_id = l_from.id
-                            LEFT JOIN drawers d_to ON fm.to_drawer_id = d_to.id
+                            LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
                             LEFT JOIN cabinets c_to ON d_to.cabinet_id = c_to.id
                             LEFT JOIN locations l_to ON c_to.location_id = l_to.id
                             WHERE " . implode(' AND ', $where) . "
@@ -3978,8 +3971,8 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         ", $params);
 
                         foreach ($movements as $m) {
-                            $fromLoc = $m['from_location_name'] ? ($m['from_location_name'] . ' > ' . $m['from_cabinet_label'] . ' > ' . $m['from_drawer_label']) : 'Unassigned';
-                            $toLoc = $m['to_location_name'] ? ($m['to_location_name'] . ' > ' . $m['to_cabinet_label'] . ' > ' . $m['to_drawer_label']) : 'Unassigned';
+                            $fromLoc = $m['from_location_name'] ? ($m['from_location_name'] . ' > ' . $m['from_cabinet_label'] . ' > ' . $m['from_cabinet_label']) : 'Unassigned';
+                            $toLoc = $m['to_location_name'] ? ($m['to_location_name'] . ' > ' . $m['to_cabinet_label'] . ' > ' . $m['to_cabinet_label']) : 'Unassigned';
                             fputcsv($output, [
                                 date('Y-m-d H:i:s', strtotime($m['moved_at'])),
                                 '#' . $m['display_number'],
@@ -4029,15 +4022,15 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         SELECT fm.*,
                                f.display_number, f.name as file_name,
                                u.name as moved_by_name,
-                               l_from.name as from_location_name, c_from.label as from_cabinet_label, d_from.label as from_drawer_label,
-                               l_to.name as to_location_name, c_to.label as to_cabinet_label, d_to.label as to_drawer_label
+                               l_from.name as from_location_name, c_from.label as from_cabinet_label, c_from.label as from_cabinet_label,
+                               l_to.name as to_location_name, c_to.label as to_cabinet_label, c_to.label as to_cabinet_label
                         FROM file_movements fm
                         LEFT JOIN files f ON fm.file_id = f.id
                         LEFT JOIN users u ON fm.moved_by = u.id
-                        LEFT JOIN drawers d_from ON fm.from_drawer_id = d_from.id
+                        LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
                         LEFT JOIN cabinets c_from ON d_from.cabinet_id = c_from.id
                         LEFT JOIN locations l_from ON c_from.location_id = l_from.id
-                        LEFT JOIN drawers d_to ON fm.to_drawer_id = d_to.id
+                        LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
                         LEFT JOIN cabinets c_to ON d_to.cabinet_id = c_to.id
                         LEFT JOIN locations l_to ON c_to.location_id = l_to.id
                         WHERE " . implode(' AND ', $where) . "
@@ -4177,14 +4170,14 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             </td>
                                             <td class="px-4 py-3">
                                                 <?php if ($m['from_location_name']): ?>
-                                                    <span class="text-xs"><?= htmlspecialchars($m['from_location_name'] . ' > ' . $m['from_cabinet_label'] . ' > ' . $m['from_drawer_label']) ?></span>
+                                                    <span class="text-xs"><?= htmlspecialchars($m['from_location_name'] . ' > ' . $m['from_cabinet_label'] . ' > ' . $m['from_cabinet_label']) ?></span>
                                                 <?php else: ?>
                                                     <span class="text-gray-400 italic text-xs">Unassigned</span>
                                                 <?php endif; ?>
                                             </td>
                                             <td class="px-4 py-3">
                                                 <?php if ($m['to_location_name']): ?>
-                                                    <span class="text-xs"><?= htmlspecialchars($m['to_location_name'] . ' > ' . $m['to_cabinet_label'] . ' > ' . $m['to_drawer_label']) ?></span>
+                                                    <span class="text-xs"><?= htmlspecialchars($m['to_location_name'] . ' > ' . $m['to_cabinet_label'] . ' > ' . $m['to_cabinet_label']) ?></span>
                                                 <?php else: ?>
                                                     <span class="text-gray-400 italic text-xs">Unassigned</span>
                                                 <?php endif; ?>
@@ -4318,12 +4311,12 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
 
                     <?php
                     $archivedFiles = $db->fetchAll("
-                        SELECT f.*, u.name as owner_name, d.label as drawer_label, c.label as cabinet_label, e.name as entity_name,
+                        SELECT f.*, u.name as owner_name, c.label as cabinet_label, e.name as entity_name,
                                au.name as archived_by_name
                         FROM files f
                         LEFT JOIN users u ON f.owner_id = u.id
                         LEFT JOIN users au ON f.archived_by = au.id
-                        LEFT JOIN drawers d ON f.current_drawer_id = d.id
+                        LEFT JOIN cabinets c ON f.current_cabinet_id = c.id
                         LEFT JOIN cabinets c ON d.cabinet_id = c.id
                         LEFT JOIN entities e ON f.entity_id = e.id
                         WHERE f.is_archived = 1
@@ -5235,7 +5228,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
 
                     <?php elseif ($report === 'by_location'): ?>
                         <?php
-                        $files = $db->fetchAll("SELECT f.*, d.label as drawer_label, c.label as cabinet_label, l.name as location_name, e.name as entity_name, u.name as owner_name FROM files f LEFT JOIN drawers d ON f.current_drawer_id = d.id LEFT JOIN cabinets c ON d.cabinet_id = c.id LEFT JOIN locations l ON c.location_id = l.id LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN users u ON f.owner_id = u.id WHERE f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY l.name, c.label, d.label");
+                        $files = $db->fetchAll("SELECT f.*, c.label as cabinet_label, l.name as location_name, e.name as entity_name, u.name as owner_name FROM files f LEFT JOIN cabinets c ON f.current_cabinet_id = c.id LEFT JOIN cabinets c ON d.cabinet_id = c.id LEFT JOIN locations l ON c.location_id = l.id LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN users u ON f.owner_id = u.id WHERE f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY l.name, c.label, d.label");
                         $grouped = [];
                         foreach($files as $f) {
                             $loc = $f['location_name'] ?: 'No Location';
@@ -5629,7 +5622,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             $fieldMap = ['display_number' => 'f.display_number', 'name' => 'f.name', 'owner' => 'u.name as owner_name', 'entity' => 'e.name as entity_name', 'location' => 'l.name as location_name', 'sensitivity' => 'f.sensitivity', 'status' => "CASE WHEN f.is_archived = 1 THEN 'Archived' WHEN f.is_checked_out = 1 THEN 'Checked Out' ELSE 'Active' END as status", 'created_at' => 'f.created_at'];
                             $selectFields = array_map(fn($f) => $fieldMap[$f] ?? '', $fields);
                             $headers = array_map(fn($f) => ucwords(str_replace('_', ' ', $f)), $fields);
-                            $query = "SELECT " . implode(', ', $selectFields) . " FROM files f LEFT JOIN users u ON f.owner_id = u.id LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN drawers d ON f.current_drawer_id = d.id LEFT JOIN cabinets c ON d.cabinet_id = c.id LEFT JOIN locations l ON c.location_id = l.id WHERE 1=1";
+                            $query = "SELECT " . implode(', ', $selectFields) . " FROM files f LEFT JOIN users u ON f.owner_id = u.id LEFT JOIN entities e ON f.entity_id = e.id LEFT JOIN cabinets c ON f.current_cabinet_id = c.id LEFT JOIN cabinets c ON d.cabinet_id = c.id LEFT JOIN locations l ON c.location_id = l.id WHERE 1=1";
                             $params = [];
                             if (!empty($_GET['filter_status'])) {
                                 if ($_GET['filter_status'] === 'active') $query .= " AND f.is_archived = 0 AND f.is_destroyed = 0 AND f.is_checked_out = 0";

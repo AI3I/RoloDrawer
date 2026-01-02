@@ -66,17 +66,6 @@ CREATE TABLE IF NOT EXISTS cabinets (
     FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE SET NULL
 );
 
--- Drawers table
-CREATE TABLE IF NOT EXISTS drawers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cabinet_id INTEGER NOT NULL,
-    label TEXT NOT NULL,
-    position INTEGER DEFAULT 0,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (cabinet_id) REFERENCES cabinets(id) ON DELETE CASCADE
-);
-
 -- Tags table
 CREATE TABLE IF NOT EXISTS tags (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,9 +83,9 @@ CREATE TABLE IF NOT EXISTS files (
     description TEXT,
     sensitivity TEXT DEFAULT 'internal', -- public, internal, confidential, restricted
     owner_id INTEGER NOT NULL,
-    current_drawer_id INTEGER,
-    vertical_position TEXT, -- Top, Upper, Lower, Bottom
-    horizontal_position TEXT, -- Front, Center, Back
+    current_cabinet_id INTEGER,
+    vertical_position TEXT DEFAULT 'Not Specified', -- Top, Upper, Lower, Bottom (represents which drawer)
+    horizontal_position TEXT DEFAULT 'Not Specified', -- Front, Center, Back
     entity_id INTEGER,
     is_checked_out INTEGER DEFAULT 0,
     checked_out_by INTEGER,
@@ -115,7 +104,7 @@ CREATE TABLE IF NOT EXISTS files (
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_id) REFERENCES users(id),
-    FOREIGN KEY (current_drawer_id) REFERENCES drawers(id) ON DELETE SET NULL,
+    FOREIGN KEY (current_cabinet_id) REFERENCES cabinets(id) ON DELETE SET NULL,
     FOREIGN KEY (entity_id) REFERENCES entities(id) ON DELETE SET NULL,
     FOREIGN KEY (checked_out_by) REFERENCES users(id),
     FOREIGN KEY (archived_by) REFERENCES users(id),
@@ -149,21 +138,21 @@ CREATE TABLE IF NOT EXISTS file_checkouts (
 CREATE TABLE IF NOT EXISTS file_movements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     file_id INTEGER NOT NULL,
-    from_drawer_id INTEGER,
-    to_drawer_id INTEGER,
+    from_cabinet_id INTEGER,
+    to_cabinet_id INTEGER,
     moved_by INTEGER NOT NULL,
     notes TEXT,
     moved_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,
-    FOREIGN KEY (from_drawer_id) REFERENCES drawers(id),
-    FOREIGN KEY (to_drawer_id) REFERENCES drawers(id),
+    FOREIGN KEY (from_cabinet_id) REFERENCES cabinets(id),
+    FOREIGN KEY (to_cabinet_id) REFERENCES cabinets(id),
     FOREIGN KEY (moved_by) REFERENCES users(id)
 );
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_files_uuid ON files(uuid);
 CREATE INDEX IF NOT EXISTS idx_files_display_number ON files(display_number);
-CREATE INDEX IF NOT EXISTS idx_files_current_drawer ON files(current_drawer_id);
+CREATE INDEX IF NOT EXISTS idx_files_current_cabinet ON files(current_cabinet_id);
 CREATE INDEX IF NOT EXISTS idx_files_entity ON files(entity_id);
 CREATE INDEX IF NOT EXISTS idx_files_checked_out ON files(is_checked_out);
 CREATE INDEX IF NOT EXISTS idx_files_archived ON files(is_archived);
