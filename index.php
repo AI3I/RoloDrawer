@@ -2930,7 +2930,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         <div class="grid grid-cols-2 gap-6 mb-6">
                             <!-- Left Column: File Information -->
                             <div class="bg-white rounded-lg shadow p-6">
-                                <h3 class="font-bold text-lg mb-4"><?= htmlspecialchars($file['name']) ?></h3>
+                                <h2 class="font-bold text-2xl mb-4"><?= htmlspecialchars($file['name']) ?></h2>
 
                                 <div class="space-y-4">
                                     <div class="space-y-2">
@@ -3208,10 +3208,10 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     </div>
                                 <?php endif; ?>
 
-                                <!-- Proposed Location Display -->
-                                <div id="proposed_location_display" class="mb-4 p-3 bg-red-50 rounded border border-red-200">
+                                <!-- New Destination Display -->
+                                <div id="proposed_location_display" class="mb-4 p-3 bg-green-50 rounded border border-green-200">
                                     <div class="text-sm text-gray-700">
-                                        <strong class="text-red-700">Proposed Location:</strong>
+                                        <strong class="text-green-700">New Destination:</strong>
                                         <span id="proposed_location_text" class="text-gray-600">Make selections below...</span>
                                     </div>
                                 </div>
@@ -3318,7 +3318,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                 <span class="text-sm">I confirm I want to update this archived file</span>
                                             </label>
                                         </div>
-                                        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-medium">
+                                        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
                                             Update File Location
                                         </button>
                                     </form>
@@ -3477,7 +3477,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             <textarea name="move_notes" rows="2" placeholder="e.g., Reorganization, space optimization, entity reassignment, etc."
                                                       class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                                         </div>
-                                        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-medium">
+                                        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
                                             Update File Location
                                         </button>
                                     </form>
@@ -3582,7 +3582,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
 
                         if (!empty($checkoutHistory) || !empty($movementHistory)):
                         ?>
-                            <div class="bg-white rounded-lg shadow p-6 mb-6" x-data="{ open: false, activeTab: 'checkouts' }">
+                            <div class="bg-white rounded-lg shadow p-6 mb-6" x-data="{ open: true, activeTab: 'checkouts' }">
                                 <button @click="open = !open" class="w-full flex justify-between items-center text-left">
                                     <h3 class="font-bold text-lg flex items-center gap-2">
                                         <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3708,74 +3708,59 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             </div>
                         <?php endif; ?>
 
+                        <!-- DESTROY FILE SECTION - Admin Only, Archived Files Only -->
                         <?php if ($file['is_archived'] && !$file['is_destroyed'] && $_SESSION['user_role'] === 'admin'): ?>
-                            <!-- Destruction Section (Admin Only, Archived Files Only) -->
-                            <div class="bg-white rounded-lg shadow p-6 mb-6 border-2 border-red-200" x-data="{ showDestructionForm: false }">
-                                <h3 class="font-bold text-lg mb-4 text-red-700 flex items-center gap-2">
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            <div class="bg-white rounded-lg shadow p-6 mb-6 border-2 border-red-300">
+                                <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                     </svg>
-                                    Mark File as Destroyed
+                                    <span>Destroy File</span>
+                                    <span class="px-2 py-1 text-xs bg-red-100 text-red-800 rounded font-normal">Admin Only</span>
                                 </h3>
-                                <div class="mb-4 p-4 bg-red-50 rounded border border-red-200">
-                                    <p class="text-sm text-gray-700 mb-2"><strong>Workflow:</strong> Active → Archive → Destroy</p>
-                                    <p class="text-sm text-red-700 font-medium">
-                                        This is a PERMANENT action with legal implications. Only mark a file as destroyed after
-                                        physical destruction has been completed according to your organization's policies.
+                                <div class="bg-red-50 border border-red-200 rounded p-4 mb-4">
+                                    <p class="text-sm text-red-800 mb-2">
+                                        <strong>⚠️ Warning:</strong> Destroying a file marks it as permanently destroyed in the system. This action indicates physical destruction of the document.
+                                    </p>
+                                    <p class="text-xs text-red-700">
+                                        Files must be archived before they can be marked as destroyed. The digital record will remain for compliance and audit purposes.
                                     </p>
                                 </div>
-
-                                <button @click="showDestructionForm = !showDestructionForm"
-                                        class="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 font-bold"
-                                        x-text="showDestructionForm ? 'Cancel' : 'Mark as Destroyed'">
-                                    Mark as Destroyed
-                                </button>
-
-                                <div x-show="showDestructionForm" x-cloak class="mt-4 p-6 bg-red-50 rounded border-2 border-red-300">
-                                    <form method="POST" action="?page=files&action=mark_destruction&id=<?= $file['id'] ?>">
-                                        <div class="mb-4">
-                                            <label class="block text-gray-700 mb-2 font-bold">Destruction Method *</label>
-                                            <select name="destruction_method" required class="w-full px-3 py-2 border border-red-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500">
-                                                <option value="">-- Select Destruction Method --</option>
-                                                <option value="Shredding (Cross-cut)">Shredding (Cross-cut)</option>
-                                                <option value="Shredding (Strip-cut)">Shredding (Strip-cut)</option>
-                                                <option value="Incineration">Incineration</option>
-                                                <option value="Pulping">Pulping</option>
-                                                <option value="Digital Deletion (Secure Wipe)">Digital Deletion (Secure Wipe)</option>
-                                                <option value="Recycled">Recycled</option>
-                                                <option value="Other">Other (specify in notes)</option>
-                                            </select>
-                                        </div>
-                                        <div class="mb-4">
-                                            <label class="block text-gray-700 mb-2 font-medium">Additional Notes (Optional)</label>
-                                            <textarea name="notes" rows="3"
-                                                      placeholder="Any additional details about the destruction process, certification numbers, witness information, etc."
-                                                      class="w-full px-3 py-2 border border-red-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
-                                        </div>
-                                        <div class="mb-6 p-4 bg-white rounded border-2 border-red-400">
-                                            <label class="flex items-start">
-                                                <input type="checkbox" name="confirm_destruction" required class="mr-3 mt-1">
-                                                <span class="text-sm font-bold text-red-700">
-                                                    I confirm that this file has been properly destroyed according to organizational policies
-                                                    and that the destruction method selected above accurately reflects the physical destruction
-                                                    that has been completed.
-                                                </span>
-                                            </label>
-                                        </div>
-                                        <div class="flex gap-2">
-                                            <button type="submit" class="bg-red-700 text-white px-8 py-3 rounded hover:bg-red-800 font-bold flex items-center gap-2">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                                </svg>
-                                                Confirm Destruction
-                                            </button>
-                                            <button type="button" @click="showDestructionForm = false"
-                                                    class="bg-gray-300 text-gray-700 px-6 py-3 rounded hover:bg-gray-400">
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
+                                <form method="POST" action="?page=files&action=mark_destruction&id=<?= $file['id'] ?>" onsubmit="return confirm('⚠️ CRITICAL: Are you absolutely sure you want to mark this file as DESTROYED? This indicates the physical document has been permanently destroyed.');">
+                                    <div class="mb-4">
+                                        <label class="block text-gray-700 mb-2 font-medium">Destruction Method (Required) *</label>
+                                        <select name="destruction_method" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-red-500">
+                                            <option value="">Select method...</option>
+                                            <option value="Shredding">Shredding</option>
+                                            <option value="Burning">Burning</option>
+                                            <option value="Pulping">Pulping</option>
+                                            <option value="Degaussing">Degaussing (Magnetic Media)</option>
+                                            <option value="Physical Destruction">Physical Destruction</option>
+                                            <option value="Secure Disposal Service">Secure Disposal Service</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="block text-gray-700 mb-2">Additional Notes (Optional)</label>
+                                        <textarea name="notes" rows="2"
+                                                  placeholder="e.g., Witness name, certificate number, disposal company, etc."
+                                                  class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-red-500"></textarea>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="flex items-start">
+                                            <input type="checkbox" name="confirm_destruction" value="1" required class="mr-2 mt-1">
+                                            <span class="text-sm">
+                                                <strong>I confirm that this file has been physically destroyed</strong> using the specified method and that proper disposal procedures were followed.
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <button type="submit" class="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                        </svg>
+                                        <span>Mark File as Destroyed</span>
+                                    </button>
+                                </form>
                             </div>
                         <?php endif; ?>
 
@@ -4297,8 +4282,8 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                 </span>
                                             </td>
                                             <td class="px-6 py-4">
-                                                <a href="?page=files&action=view&id=<?= $file['id'] ?>" class="text-blue-600 hover:underline mr-3">View</a>
-                                                <a href="?page=files&action=edit&id=<?= $file['id'] ?>" class="text-green-600 hover:underline mr-3">Edit</a>
+                                                <a href="?page=files&action=view&id=<?= $file['id'] ?>" class="text-green-600 hover:underline mr-3">View</a>
+                                                <a href="?page=files&action=edit&id=<?= $file['id'] ?>" class="text-blue-600 hover:underline mr-3">Edit</a>
                                                 <?php if (in_array($_SESSION['user_role'], ['admin', 'user'])): ?>
                                                     <a href="#" onclick="openArchiveModal(<?= $file['id'] ?>, '<?= htmlspecialchars($file['display_number'], ENT_QUOTES) ?>'); return false;" class="text-yellow-600 hover:underline">Archive</a>
                                                 <?php endif; ?>
@@ -5413,7 +5398,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         </div>
                                         <div class="flex items-center gap-2">
                                             <a href="?page=storage&action=edit&id=<?= $loc['id'] ?>" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</a>
-                                            <form method="POST" action="?page=storage&action=delete&id=<?= $loc['id'] ?>" onsubmit="return confirm('Delete this location? This will disassociate <?= count($locationCabinets) ?> cabinet(s) and <?= $locationFileCount ?> file(s).');" class="inline">
+                                            <form method="POST" action="?page=storage&action=delete&id=<?= $loc['id'] ?>" onsubmit="return confirm('Delete this location? This will disassociate <?= count($locationCabinets) ?> cabinet(s) and <?= $locationFileCount ?> file(s).');" class="inline-flex items-center">
                                                 <input type="hidden" name="confirm_delete" value="1">
                                                 <button type="submit" class="text-red-600 hover:text-red-800 text-sm font-medium">Delete</button>
                                             </form>
@@ -5436,9 +5421,9 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                     <div class="text-sm text-gray-600 mb-3">
                                                         <?= $cab['file_count'] ?> file(s)
                                                     </div>
-                                                    <div class="flex gap-2">
+                                                    <div class="flex items-center gap-2">
                                                         <a href="?page=cabinets&action=edit&id=<?= $cab['id'] ?>" class="text-xs text-blue-600 hover:text-blue-800">Edit</a>
-                                                        <form method="POST" action="?page=cabinets&action=delete&id=<?= $cab['id'] ?>" onsubmit="return confirm('Delete cabinet <?= htmlspecialchars($cab['label']) ?>? This will disassociate <?= $cab['file_count'] ?> file(s).');" class="inline">
+                                                        <form method="POST" action="?page=cabinets&action=delete&id=<?= $cab['id'] ?>" onsubmit="return confirm('Delete cabinet <?= htmlspecialchars($cab['label']) ?>? This will disassociate <?= $cab['file_count'] ?> file(s).');" class="inline-flex items-center">
                                                             <input type="hidden" name="confirm_delete" value="1">
                                                             <button type="submit" class="text-xs text-red-600 hover:text-red-800">Delete</button>
                                                         </form>
@@ -5478,9 +5463,9 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                 <div class="text-sm text-gray-600 mb-3">
                                                     <?= $cab['file_count'] ?> file(s)
                                                 </div>
-                                                <div class="flex gap-2">
+                                                <div class="flex items-center gap-2">
                                                     <a href="?page=cabinets&action=edit&id=<?= $cab['id'] ?>" class="text-xs text-blue-600 hover:text-blue-800">Edit</a>
-                                                    <form method="POST" action="?page=cabinets&action=delete&id=<?= $cab['id'] ?>" onsubmit="return confirm('Delete cabinet <?= htmlspecialchars($cab['label']) ?>? This will disassociate <?= $cab['file_count'] ?> file(s).');" class="inline">
+                                                    <form method="POST" action="?page=cabinets&action=delete&id=<?= $cab['id'] ?>" onsubmit="return confirm('Delete cabinet <?= htmlspecialchars($cab['label']) ?>? This will disassociate <?= $cab['file_count'] ?> file(s).');" class="inline-flex items-center">
                                                         <input type="hidden" name="confirm_delete" value="1">
                                                         <button type="submit" class="text-xs text-red-600 hover:text-red-800">Delete</button>
                                                     </form>
@@ -5621,28 +5606,57 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         <h2 class="text-3xl font-bold mb-6 text-center">File Lookup</h2>
 
                         <?php
-                        $uuid = $_GET['uuid'] ?? '';
-                        $fileNumber = $_GET['number'] ?? '';
+                        $uuid = trim($_GET['uuid'] ?? '');
+                        $fileNumber = trim($_GET['number'] ?? '');
 
                         if ($uuid || $fileNumber):
                             // Try to find the file
                             if ($uuid) {
                                 $file = $db->fetchOne("SELECT * FROM files WHERE uuid = ?", [$uuid]);
-                            } else {
+                            } elseif ($fileNumber) {
                                 $file = $db->fetchOne("SELECT * FROM files WHERE display_number = ?", [$fileNumber]);
+                            } else {
+                                $file = false;
                             }
 
                             if ($file):
-                                // Redirect to file view
-                                header("Location: ?page=files&action=view&id=" . $file['id']);
-                                exit;
+                                // Redirect to file view using JavaScript (can't use header() as HTML already output)
+                                ?>
+                                <script>
+                                    window.location.href = '?page=files&action=view&id=<?= $file['id'] ?>';
+                                </script>
+                                <div class="bg-green-100 border-2 border-green-500 text-green-700 p-6 rounded-lg mb-6">
+                                    <h3 class="font-bold text-xl mb-2">File Found!</h3>
+                                    <p>Redirecting to file details...</p>
+                                    <p class="mt-2"><a href="?page=files&action=view&id=<?= $file['id'] ?>" class="underline">Click here if not redirected automatically</a></p>
+                                </div>
+                                <?php
                             else:
                         ?>
                             <div class="bg-red-100 border-2 border-red-500 text-red-700 p-6 rounded-lg mb-6">
                                 <h3 class="font-bold text-xl mb-2">File Not Found</h3>
-                                <p>The file you're looking for could not be found.</p>
+                                <p>The file you're looking for could not be found in the system.</p>
                                 <?php if ($uuid): ?>
-                                    <p class="text-sm mt-2 font-mono">UUID: <?= htmlspecialchars($uuid) ?></p>
+                                    <p class="text-sm mt-2"><strong>Searched UUID:</strong> <span class="font-mono"><?= htmlspecialchars($uuid) ?></span></p>
+                                    <p class="text-xs mt-1 text-gray-600">(Length: <?= strlen($uuid) ?> characters)</p>
+                                <?php endif; ?>
+                                <?php if ($fileNumber): ?>
+                                    <p class="text-sm mt-2"><strong>Searched File Number:</strong> <span class="font-mono"><?= htmlspecialchars($fileNumber) ?></span></p>
+                                    <p class="text-xs mt-1 text-gray-600">(Length: <?= strlen($fileNumber) ?> characters)</p>
+                                <?php endif; ?>
+                                <p class="text-sm mt-3 text-gray-600">Please verify the UUID or file number and try again. File numbers are case-sensitive.</p>
+
+                                <?php
+                                // Show some example files for debugging
+                                $exampleFiles = $db->fetchAll("SELECT id, display_number, uuid FROM files WHERE is_destroyed = 0 LIMIT 3");
+                                if (!empty($exampleFiles)):
+                                ?>
+                                    <div class="mt-4 p-3 bg-white rounded border border-red-300">
+                                        <p class="text-xs font-bold text-gray-700 mb-2">Example file numbers in the system:</p>
+                                        <?php foreach ($exampleFiles as $example): ?>
+                                            <p class="text-xs text-gray-600 font-mono">• <?= htmlspecialchars($example['display_number']) ?></p>
+                                        <?php endforeach; ?>
+                                    </div>
                                 <?php endif; ?>
                             </div>
                         <?php
