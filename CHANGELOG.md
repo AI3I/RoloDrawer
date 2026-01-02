@@ -55,6 +55,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All location displays now show: Cabinet (Vertical/Horizontal)
 - Reports updated to show cabinet + position instead of drawer
 - SQL queries optimized by removing unnecessary drawer joins
+- **QR Lookup functionality**: Fixed redirect issue by switching from PHP header() to JavaScript redirect
+- **Storage page alignment**: Edit/Delete buttons now properly aligned horizontally
+- **Input handling**: QR Lookup now trims whitespace from search inputs
+
+### Improved
+- **File view page UI enhancements**:
+  - Enlarged file name heading (h2 text-2xl) for better visual hierarchy
+  - Renamed "Proposed Location" to "New Destination" with green styling
+  - File History now expanded by default for immediate visibility
+  - Removed bold font from "Update File Location" buttons for cleaner appearance
+- **Files list page**: Swapped View/Edit button colors (Edit=blue, View=green) for consistency with edit page
+- **Destroy File UI**: Replaced collapsible form with always-visible simpler interface
+  - Streamlined destruction method options
+  - Clearer warning messages with admin-only badge
+  - Better positioning after File History section
+- **QR Lookup error messages**: Enhanced with character length display, case-sensitivity notice, and example file numbers
 
 ### Database Changes
 - Removed `drawers` table
