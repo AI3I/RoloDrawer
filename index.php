@@ -469,7 +469,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // LOCATION OPERATIONS
-    if ($page === 'locations' && $action === 'create') {
+    if ($page === 'storage' && $action === 'create') {
         $name = $_POST['name'] ?? '';
         $building = $_POST['building'] ?? '';
         $floor = $_POST['floor'] ?? '';
@@ -479,11 +479,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db->query("INSERT INTO locations (name, building, floor, room, notes) VALUES (?, ?, ?, ?, ?)",
                     [$name, $building, $floor, $room, $notes]);
 
-        header("Location: ?page=locations&message=Location created");
+        header("Location: ?page=storage&message=Location created");
         exit;
     }
 
-    if ($page === 'locations' && $action === 'edit' && $id) {
+    if ($page === 'storage' && $action === 'edit' && $id) {
         $name = $_POST['name'] ?? '';
         $building = $_POST['building'] ?? '';
         $floor = $_POST['floor'] ?? '';
@@ -493,11 +493,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db->query("UPDATE locations SET name = ?, building = ?, floor = ?, room = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                     [$name, $building, $floor, $room, $notes, $id]);
 
-        header("Location: ?page=locations&message=Location updated");
+        header("Location: ?page=storage&message=Location updated");
         exit;
     }
 
-    if ($page === 'locations' && $action === 'delete' && $id) {
+    if ($page === 'storage' && $action === 'delete' && $id) {
         // Check if location has cabinets
         $cabinetCount = $db->fetchOne("SELECT COUNT(*) as count FROM cabinets WHERE location_id = ?", [$id])['count'];
 
@@ -511,7 +511,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Delete the location
             $db->query("DELETE FROM locations WHERE id = ?", [$id]);
 
-            header("Location: ?page=locations&message=" . urlencode("Location deleted. $cabinetCount cabinet(s) and $fileCount file(s) were disassociated."));
+            header("Location: ?page=storage&message=" . urlencode("Location deleted. $cabinetCount cabinet(s) and $fileCount file(s) were disassociated."));
             exit;
         } else {
             $message = "Cannot delete location: Please confirm deletion. This will disassociate $cabinetCount cabinet(s) and $fileCount file(s).";
@@ -529,7 +529,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db->query("INSERT INTO cabinets (label, location_id, entity_id, notes) VALUES (?, ?, ?, ?)",
                     [$label, $locationId, $entityId, $notes]);
 
-        header("Location: ?page=locations&message=Cabinet created");
+        header("Location: ?page=storage&message=Cabinet created");
         exit;
     }
 
@@ -542,7 +542,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db->query("UPDATE cabinets SET label = ?, location_id = ?, entity_id = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                     [$label, $locationId, $entityId, $notes, $id]);
 
-        header("Location: ?page=locations&message=Cabinet updated");
+        header("Location: ?page=storage&message=Cabinet updated");
         exit;
     }
 
@@ -557,7 +557,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Delete the cabinet
             $db->query("DELETE FROM cabinets WHERE id = ?", [$id]);
 
-            header("Location: ?page=locations&message=" . urlencode("Cabinet deleted. $fileCount file(s) were disassociated."));
+            header("Location: ?page=storage&message=" . urlencode("Cabinet deleted. $fileCount file(s) were disassociated."));
             exit;
         } else {
             $message = "Cannot delete cabinet: Please confirm deletion. This will disassociate $fileCount file(s).";
@@ -1213,8 +1213,8 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                 <a href="?page=entities" class="block px-4 py-2 <?= $page === 'entities' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
                     <span class="inline-block w-5">🏢</span> Entities
                 </a>
-                <a href="?page=locations" class="block px-4 py-2 <?= $page === 'locations' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
-                    <span class="inline-block w-5">📍</span> File Storage
+                <a href="?page=storage" class="block px-4 py-2 <?= $page === 'storage' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
+                    <span class="inline-block w-5">🗄️</span> File Storage
                 </a>
                 <a href="?page=tags" class="block px-4 py-2 <?= $page === 'tags' ? 'bg-gray-700' : 'hover:bg-gray-700' ?>">
                     <span class="inline-block w-5">🏷️</span> Tags
@@ -1387,7 +1387,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     <div class="text-xs text-gray-600">Search or scan QR</div>
                                 </div>
                             </a>
-                            <a href="?page=locations" class="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors group">
+                            <a href="?page=storage" class="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors group">
                                 <div class="text-3xl">🗺️</div>
                                 <div>
                                     <div class="font-semibold text-purple-700 group-hover:text-purple-800">Browse Locations</div>
@@ -4646,7 +4646,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         </div>
                     <?php endif; ?>
 
-                <?php elseif ($page === 'locations' && $action === 'edit' && $id): ?>
+                <?php elseif ($page === 'storage' && $action === 'edit' && $id): ?>
                     <!-- Edit Location Form -->
                     <?php
                     $location = $db->fetchOne("SELECT * FROM locations WHERE id = ?", [$id]);
@@ -4689,15 +4689,15 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 </div>
                                 <div class="flex gap-2">
                                     <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Update Location</button>
-                                    <a href="?page=locations" class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400">Cancel</a>
+                                    <a href="?page=storage" class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400">Cancel</a>
                                 </div>
                             </form>
                         </div>
                     <?php endif; ?>
-                <?php elseif ($page === 'locations'): ?>
+                <?php elseif ($page === 'storage'): ?>
                     <!-- Locations Management -->
                     <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-3xl font-bold">Locations & Cabinets</h2>
+                        <h2 class="text-3xl font-bold">File Storage</h2>
                         <div class="flex gap-2">
                             <button onclick="document.getElementById('locationForm').classList.toggle('hidden')" class="bg-blue-600 text-white px-4 py-2 rounded text-sm">+ Add Location</button>
                             <button onclick="document.getElementById('cabinetForm').classList.toggle('hidden')" class="bg-green-600 text-white px-4 py-2 rounded text-sm">+ Add Cabinet</button>
@@ -4707,7 +4707,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                     <!-- Add Location Form -->
                     <div id="locationForm" class="hidden mb-4 bg-white rounded-lg shadow p-6 max-w-2xl">
                         <h3 class="text-xl font-bold mb-4">Add New Location</h3>
-                        <form method="POST" action="?page=locations&action=create">
+                        <form method="POST" action="?page=storage&action=create">
                             <div class="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label class="block text-gray-700 mb-2">Location Name *</label>
@@ -4819,8 +4819,8 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                             </div>
                                         </div>
                                         <div class="flex items-center gap-2">
-                                            <a href="?page=locations&action=edit&id=<?= $loc['id'] ?>" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</a>
-                                            <form method="POST" action="?page=locations&action=delete&id=<?= $loc['id'] ?>" onsubmit="return confirm('Delete this location? This will disassociate <?= count($locationCabinets) ?> cabinet(s) and <?= $locationFileCount ?> file(s).');" class="inline">
+                                            <a href="?page=storage&action=edit&id=<?= $loc['id'] ?>" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</a>
+                                            <form method="POST" action="?page=storage&action=delete&id=<?= $loc['id'] ?>" onsubmit="return confirm('Delete this location? This will disassociate <?= count($locationCabinets) ?> cabinet(s) and <?= $locationFileCount ?> file(s).');" class="inline">
                                                 <input type="hidden" name="confirm_delete" value="1">
                                                 <button type="submit" class="text-red-600 hover:text-red-800 text-sm font-medium">Delete</button>
                                             </form>
@@ -4959,7 +4959,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 </div>
                                 <div class="flex gap-2">
                                     <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Update Cabinet</button>
-                                    <a href="?page=locations" class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400">Cancel</a>
+                                    <a href="?page=storage" class="bg-gray-300 text-gray-700 px-6 py-2 rounded hover:bg-gray-400">Cancel</a>
                                 </div>
                             </form>
                         </div>
