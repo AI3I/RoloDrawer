@@ -20,12 +20,13 @@ RoloDrawer is a comprehensive web-based document tracking and management system 
 
 ### Workflow Features
 - **📤 Checkout/Checkin** - Track who has files with due dates and overdue alerts
+- **⏰ Expiration Tracking** - Optional expiration dates with 30/60/90 day alerts before and after expiration
 - **📦 Archive Workflow** - Compliant archiving with audit trail
 - **🗑️ Destruction Workflow** - Certificate of destruction for compliance
 - **🔄 Movement Tracking** - Complete audit trail of file movements
 
 ### Reporting & Analysis
-- **📈 10 Comprehensive Reports** - System statistics, file inventory, checkout status, overdue files, archive summary, movement history, files by location, files by entity, tag usage, and user activity
+- **📈 19 Comprehensive Reports** - Including inventory reports (by location, entity, tag), activity reports (checkouts, overdue, user activity), expiration reports (expired files, expiring 30/60/90 days, unhandled compliance), organization reports (by owner, sensitivity, unassigned, checkout history, movement history), and compliance analytics
 
 ### Physical Integration
 - **📱 QR Code System** - Generate and scan QR codes for physical files
@@ -62,14 +63,26 @@ The database will be created automatically on first access!
 
 ### First-Time Login
 ```
-Email: admin@rolodrawer.local
+Email: (check storage/database/schema.sql for default admin user)
 Password: RoloDrawer2026!
 ```
 
 ⚠️ **IMPORTANT**: Change the default password immediately after first login!
 
+### Upgrading from Previous Versions
+
+If upgrading to v1.0.6+ with expiration tracking:
+
+```bash
+php migrate_add_expiration.php
+```
+
+See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for detailed upgrade instructions.
+
 ## 📖 Documentation
 
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Deployment and upgrade guide
+- **[EXPIRATION_FEATURE_SUMMARY.md](EXPIRATION_FEATURE_SUMMARY.md)** - Expiration tracking feature documentation
 - **[INSTALLATION.md](INSTALLATION.md)** - Detailed installation guide for various platforms
 - **[USER_GUIDE.md](USER_GUIDE.md)** - Complete user documentation
 - **[ADMIN_GUIDE.md](ADMIN_GUIDE.md)** - Administrator guide
@@ -118,4 +131,4 @@ This project is licensed under the GNU GPLv3 - see the [LICENSE](LICENSE) file f
 
 ---
 
-**Version**: 1.0.5 | **Last Updated**: January 2026
+**Version**: 1.0.6 | **Last Updated**: January 2026
