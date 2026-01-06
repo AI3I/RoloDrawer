@@ -17,14 +17,10 @@
 
 require_once __DIR__ . '/src/Database/Database.php';
 
-// Load configuration
-if (!file_exists(__DIR__ . '/config.php')) {
-    die("Error: config.php not found.\n");
-}
-require_once __DIR__ . '/config.php';
+use RoloDrawer\Database\Database;
 
-// Initialize database
-$db = new Database(DB_PATH);
+// Get database instance
+$db = Database::getInstance();
 
 echo "===========================================\n";
 echo "RoloDrawer Expiration Reminder Cron Job\n";
