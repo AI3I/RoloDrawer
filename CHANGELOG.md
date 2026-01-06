@@ -11,6 +11,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.7] - 2026-01-06
+
+### Removed
+- **Repository Cleanup**: Removed 7 obsolete files (1,290 lines of code)
+  - config.example.php - Template for unimplemented features
+  - debug_movements.php - Development debug script
+  - debug_schema.php - Development debug script
+  - fix_all_drawer_fks.php - Obsolete v1.0.4 migration
+  - fix_drawer_fk.php - Obsolete v1.0.4 migration
+  - migrate_positions.php - Obsolete v1.0.4 migration
+  - migrate_remove_drawers.php - Obsolete v1.0.4 migration
+
+### Notes
+- This is a maintenance release with no functional changes
+- Cleanup improves repository clarity and reduces confusion
+
+---
+
+## [1.0.6] - 2026-01-06
+
+### Added
+- **Expiration Date Tracking**: Optional expiration dates for files
+  - Optional expiration_date field on file creation/edit forms
+  - Expiration date display on file detail view with color-coded status badges
+  - Helper functions for expiration calculations and status determination
+  - Dashboard alerts showing expired and expiring files (30/60/90 days before/after)
+  - Database schema: expiration_date and expiration_handled_at columns
+  - expiration_reminders table for tracking sent reminders
+  - Indexes for performance optimization
+- **Expiration Cron Job**: Daily cron script (expiration_cron.php)
+  - Identifies files needing reminders at 30/60/90 day intervals
+  - Logs reminders to expiration_reminders table
+  - Prevents duplicate reminder creation
+- **Expiration Reports**: 4 new expiration-related reports
+  - Expired Files report (files past expiration)
+  - Expiring Soon (30 days) report
+  - Expiring Moderate (60 days) report
+  - Expiring Long Term (90 days) report
+  - Expired Unhandled (30/60/90 days) compliance reports
+- **Organization Reports**: 6 new comprehensive reports
+  - Files by Owner report
+  - Files by Sensitivity Level report
+  - Unassigned Files report
+  - File Checkout History report
+  - File Movement History report
+- **Dashboard Enhancements**:
+  - Expiration statistics cards (expired, expiring 30/60/90 days)
+  - Expiration alerts widget with color-coded badges
+  - Updated statistics to 4-column grid layout
+- **Database Migration**: migrate_add_expiration.php script
+  - Adds expiration_date and expiration_handled_at columns
+  - Creates expiration_reminders table
+  - Adds performance indexes
+  - Idempotent (safe to run multiple times)
+- **Documentation**:
+  - DEPLOYMENT_GUIDE.md - Comprehensive deployment instructions
+  - EXPIRATION_FEATURE_SUMMARY.md - Feature documentation
+  - Updated README.md with expiration features and 19 total reports
+
+### Enhanced
+- **Reports Dashboard**: Expanded from 10 to 19 comprehensive reports
+  - Reorganized into sections: Inventory, Activity, Expiration, Organization
+  - 4-column grid layout for better organization
+  - CSV export support for all new reports
+- **CSV Export**: Enhanced export functionality
+  - Added expiration status to file exports
+  - Added expiration-specific report exports
+  - Formatted date displays in exports
+
+### Fixed
+- **UI/UX Issues**:
+  - Fixed double scrollbar on dashboard (added h-full overflow-hidden to body)
+  - Fixed navigation sidebar not extending full height (changed h-full to h-screen)
+  - Fixed sidebar not scrollable (added overflow-y-auto)
+- **Security**: Removed default admin email from login page form
+
+### Database
+- Added `expiration_date TEXT` column to files table
+- Added `expiration_handled_at TEXT` column to files table
+- Created `expiration_reminders` table with foreign key constraints
+- Added indexes: idx_files_expiration_date, idx_expiration_reminders_file, idx_expiration_reminders_type
+
+---
+
 ## [1.0.5] - 2026-01-02
 
 ### Added
