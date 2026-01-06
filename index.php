@@ -64,6 +64,63 @@ function timeAgo($datetime) {
     return date('M j, Y', $timestamp);
 }
 
+// Helper function to check if a file has expired
+function isExpired($expirationDate) {
+    if (!$expirationDate) return false;
+    return strtotime($expirationDate) < strtotime('today');
+}
+
+// Helper function to calculate days until expiration (negative if expired)
+function daysUntilExpiration($expirationDate) {
+    if (!$expirationDate) return null;
+    $days = floor((strtotime($expirationDate) - strtotime('today')) / 86400);
+    return $days;
+}
+
+// Helper function to calculate days since expiration
+function daysSinceExpiration($expirationDate) {
+    if (!$expirationDate) return 0;
+    $days = floor((strtotime('today') - strtotime($expirationDate)) / 86400);
+    return max(0, $days);
+}
+
+// Helper function to get expiration status
+function getExpirationStatus($expirationDate) {
+    if (!$expirationDate) return null;
+
+    $days = daysUntilExpiration($expirationDate);
+
+    if ($days < 0) {
+        return [
+            'status' => 'expired',
+            'class' => 'bg-red-100 text-red-800',
+            'label' => 'EXPIRED',
+            'days' => abs($days)
+        ];
+    } elseif ($days <= 30) {
+        return [
+            'status' => 'expiring_soon',
+            'class' => 'bg-orange-100 text-orange-800',
+            'label' => 'Expiring Soon',
+            'days' => $days
+        ];
+    } elseif ($days <= 60) {
+        return [
+            'status' => 'expiring_moderate',
+            'class' => 'bg-yellow-100 text-yellow-800',
+            'label' => 'Expiring',
+            'days' => $days
+        ];
+    } else {
+        return [
+            'status' => 'valid',
+            'class' => 'bg-green-100 text-green-800',
+            'label' => 'Valid',
+            'days' => $days
+        ];
+    }
+}
+
 // Helper function to get sensitivity emoji
 function getSensitivityEmoji($sensitivity) {
     $emojis = [
@@ -163,6 +220,52 @@ if ($format === 'csv' && $page === 'reports') {
         $overdueFiles = $db->fetchAll("SELECT f.*, u.name as checked_out_to, u.email as user_email FROM files f LEFT JOIN users u ON f.checked_out_by = u.id WHERE f.is_checked_out = 1 AND f.expected_return_date < DATE('now') ORDER BY f.expected_return_date");
         $data = array_map(fn($f) => [$f['display_number'], $f['name'], $f['checked_out_to'], $f['user_email'], $f['expected_return_date'], daysOverdue($f['expected_return_date'])], $overdueFiles);
         exportCSV($data, 'overdue_files_'.date('Y-m-d').'.csv', ['File #','Name','Checked Out To','Email','Expected Return','Days Overdue']);
+    } elseif ($report === 'expired') {
+        $expiredFiles = $db->fetchAll("SELECT f.*, u.name as owner_name, u.email as owner_email FROM files f LEFT JOIN users u ON f.owner_id = u.id WHERE f.expiration_date IS NOT NULL AND f.expiration_date < DATE('now') AND f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY f.expiration_date");
+        $data = array_map(fn($f) => [$f['display_number'], $f['name'], $f['owner_name'], $f['owner_email'], $f['expiration_date'], daysSinceExpiration($f['expiration_date'])], $expiredFiles);
+        exportCSV($data, 'expired_files_'.date('Y-m-d').'.csv', ['File #','Name','Owner','Email','Expiration Date','Days Expired']);
+    } elseif ($report === 'expiring') {
+        $days = isset($_GET['days']) ? (int)$_GET['days'] : 30;
+        if ($days == 30) {
+            $expiringFiles = $db->fetchAll("SELECT f.*, u.name as owner_name, u.email as owner_email FROM files f LEFT JOIN users u ON f.owner_id = u.id WHERE f.expiration_date IS NOT NULL AND f.expiration_date >= DATE('now') AND f.expiration_date <= DATE('now', '+30 days') AND f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY f.expiration_date");
+        } elseif ($days == 60) {
+            $expiringFiles = $db->fetchAll("SELECT f.*, u.name as owner_name, u.email as owner_email FROM files f LEFT JOIN users u ON f.owner_id = u.id WHERE f.expiration_date IS NOT NULL AND f.expiration_date > DATE('now', '+30 days') AND f.expiration_date <= DATE('now', '+60 days') AND f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY f.expiration_date");
+        } else {
+            $expiringFiles = $db->fetchAll("SELECT f.*, u.name as owner_name, u.email as owner_email FROM files f LEFT JOIN users u ON f.owner_id = u.id WHERE f.expiration_date IS NOT NULL AND f.expiration_date > DATE('now', '+60 days') AND f.expiration_date <= DATE('now', '+90 days') AND f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY f.expiration_date");
+        }
+        $data = array_map(fn($f) => [$f['display_number'], $f['name'], $f['owner_name'], $f['owner_email'], $f['expiration_date'], daysUntilExpiration($f['expiration_date'])], $expiringFiles);
+        exportCSV($data, 'expiring_files_'.$days.'days_'.date('Y-m-d').'.csv', ['File #','Name','Owner','Email','Expiration Date','Days Until Expiration']);
+    } elseif ($report === 'expired_unhandled') {
+        $days = isset($_GET['days']) ? (int)$_GET['days'] : 30;
+        if ($days == 30) {
+            $unhandledFiles = $db->fetchAll("SELECT f.*, u.name as owner_name, u.email as owner_email FROM files f LEFT JOIN users u ON f.owner_id = u.id WHERE f.expiration_date IS NOT NULL AND f.expiration_date < DATE('now', '-30 days') AND f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY f.expiration_date");
+        } elseif ($days == 60) {
+            $unhandledFiles = $db->fetchAll("SELECT f.*, u.name as owner_name, u.email as owner_email FROM files f LEFT JOIN users u ON f.owner_id = u.id WHERE f.expiration_date IS NOT NULL AND f.expiration_date < DATE('now', '-60 days') AND f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY f.expiration_date");
+        } else {
+            $unhandledFiles = $db->fetchAll("SELECT f.*, u.name as owner_name, u.email as owner_email FROM files f LEFT JOIN users u ON f.owner_id = u.id WHERE f.expiration_date IS NOT NULL AND f.expiration_date < DATE('now', '-90 days') AND f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY f.expiration_date");
+        }
+        $data = array_map(fn($f) => [$f['display_number'], $f['name'], $f['owner_name'], $f['owner_email'], $f['expiration_date'], daysSinceExpiration($f['expiration_date'])], $unhandledFiles);
+        exportCSV($data, 'expired_unhandled_'.$days.'days_'.date('Y-m-d').'.csv', ['File #','Name','Owner','Email','Expiration Date','Days Since Expiration']);
+    } elseif ($report === 'by_owner') {
+        $files = $db->fetchAll("SELECT f.*, u.name as owner_name, u.email as owner_email, c.label as cabinet_label, l.name as location_name FROM files f LEFT JOIN users u ON f.owner_id = u.id LEFT JOIN cabinets c ON f.current_cabinet_id = c.id LEFT JOIN locations l ON c.location_id = l.id WHERE f.is_destroyed = 0 ORDER BY u.name, f.display_number");
+        $data = array_map(fn($f) => [$f['display_number'], $f['name'], $f['owner_name'], $f['location_name'], $f['cabinet_label'], $f['is_checked_out'] ? 'Checked Out' : ($f['is_archived'] ? 'Archived' : 'Available')], $files);
+        exportCSV($data, 'files_by_owner_'.date('Y-m-d').'.csv', ['File #','Name','Owner','Location','Cabinet','Status']);
+    } elseif ($report === 'by_sensitivity') {
+        $files = $db->fetchAll("SELECT f.*, u.name as owner_name, c.label as cabinet_label, l.name as location_name FROM files f LEFT JOIN users u ON f.owner_id = u.id LEFT JOIN cabinets c ON f.current_cabinet_id = c.id LEFT JOIN locations l ON c.location_id = l.id WHERE f.is_destroyed = 0 ORDER BY CASE f.sensitivity WHEN 'restricted' THEN 1 WHEN 'confidential' THEN 2 WHEN 'internal' THEN 3 WHEN 'public' THEN 4 END, f.display_number");
+        $data = array_map(fn($f) => [$f['display_number'], $f['name'], ucfirst($f['sensitivity']), $f['owner_name'], $f['location_name'], $f['cabinet_label']], $files);
+        exportCSV($data, 'files_by_sensitivity_'.date('Y-m-d').'.csv', ['File #','Name','Sensitivity','Owner','Location','Cabinet']);
+    } elseif ($report === 'checkout_history') {
+        $checkoutHistory = $db->fetchAll("SELECT fc.*, f.display_number, f.name as file_name, u.name as user_name FROM file_checkouts fc JOIN files f ON fc.file_id = f.id LEFT JOIN users u ON fc.user_id = u.id ORDER BY fc.checked_out_at DESC LIMIT 500");
+        $data = array_map(fn($c) => [$c['display_number'], $c['file_name'], $c['user_name'], $c['checked_out_at'], $c['expected_return_date'], $c['returned_at'] ?: 'Still Out'], $checkoutHistory);
+        exportCSV($data, 'checkout_history_'.date('Y-m-d').'.csv', ['File #','File Name','Checked Out By','Checked Out','Expected Return','Returned']);
+    } elseif ($report === 'unassigned') {
+        $unassignedFiles = $db->fetchAll("SELECT f.*, u.name as owner_name FROM files f LEFT JOIN users u ON f.owner_id = u.id WHERE (f.current_cabinet_id IS NULL OR f.entity_id IS NULL) AND f.is_archived = 0 AND f.is_destroyed = 0 ORDER BY f.display_number");
+        $data = array_map(fn($f) => [$f['display_number'], $f['name'], $f['owner_name'], !$f['current_cabinet_id'] ? 'No Location' : '', !$f['entity_id'] ? 'No Entity' : ''], $unassignedFiles);
+        exportCSV($data, 'unassigned_files_'.date('Y-m-d').'.csv', ['File #','Name','Owner','Missing Location','Missing Entity']);
+    } elseif ($report === 'movement_history') {
+        $movements = $db->fetchAll("SELECT fm.*, f.display_number, f.name as file_name, u.name as moved_by_name, l_from.name as from_location, c_from.label as from_cabinet, l_to.name as to_location, c_to.label as to_cabinet FROM file_movements fm LEFT JOIN files f ON fm.file_id = f.id LEFT JOIN users u ON fm.moved_by = u.id LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id LEFT JOIN locations l_from ON c_from.location_id = l_from.id LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id LEFT JOIN locations l_to ON c_to.location_id = l_to.id ORDER BY fm.moved_at DESC LIMIT 500");
+        $data = array_map(fn($m) => [$m['moved_at'], $m['display_number'], $m['file_name'], $m['from_location'].' - '.$m['from_cabinet'], $m['to_location'].' - '.$m['to_cabinet'], $m['moved_by_name'], $m['notes']], $movements);
+        exportCSV($data, 'movement_history_'.date('Y-m-d').'.csv', ['Date','File #','File Name','From','To','Moved By','Notes']);
     }
 }
 
@@ -394,10 +497,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $verticalPosition = $_POST['vertical_position'] ?? 'Not Specified';
         $horizontalPosition = $_POST['horizontal_position'] ?? 'Not Specified';
         $entityId = !empty($_POST['entity_id']) ? $_POST['entity_id'] : null;
+        $expirationDate = !empty($_POST['expiration_date']) ? $_POST['expiration_date'] : null;
 
-        $db->query("INSERT INTO files (uuid, display_number, name, description, sensitivity, owner_id, current_cabinet_id, vertical_position, horizontal_position, entity_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    [$uuid, $displayNumber, $name, $description, $sensitivity, $ownerId, $cabinetId, $verticalPosition, $horizontalPosition, $entityId]);
+        $db->query("INSERT INTO files (uuid, display_number, name, description, sensitivity, owner_id, current_cabinet_id, vertical_position, horizontal_position, entity_id, expiration_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [$uuid, $displayNumber, $name, $description, $sensitivity, $ownerId, $cabinetId, $verticalPosition, $horizontalPosition, $entityId, $expirationDate]);
 
         $fileId = $db->lastInsertId();
 
@@ -423,14 +527,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $verticalPosition = $_POST['vertical_position'] ?? 'Not Specified';
         $horizontalPosition = $_POST['horizontal_position'] ?? 'Not Specified';
         $entityId = !empty($_POST['entity_id']) ? $_POST['entity_id'] : null;
+        $expirationDate = !empty($_POST['expiration_date']) ? $_POST['expiration_date'] : null;
 
         // MOVEMENT TRACKING: Fetch current cabinet_id before update
         $currentFile = $db->fetchOne("SELECT current_cabinet_id FROM files WHERE id = ?", [$id]);
         $oldCabinetId = $currentFile['current_cabinet_id'];
 
-        $db->query("UPDATE files SET name = ?, description = ?, sensitivity = ?, current_cabinet_id = ?, vertical_position = ?, horizontal_position = ?, entity_id = ?, updated_at = CURRENT_TIMESTAMP
+        $db->query("UPDATE files SET name = ?, description = ?, sensitivity = ?, current_cabinet_id = ?, vertical_position = ?, horizontal_position = ?, entity_id = ?, expiration_date = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?",
-                    [$name, $description, $sensitivity, $cabinetId, $verticalPosition, $horizontalPosition, $entityId, $id]);
+                    [$name, $description, $sensitivity, $cabinetId, $verticalPosition, $horizontalPosition, $entityId, $expirationDate, $id]);
 
         // MOVEMENT TRACKING: Log movement if cabinet changed
         if ($oldCabinetId != $cabinetId) {
@@ -1242,7 +1347,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
 
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1253,7 +1358,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
         [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 h-full overflow-hidden">
 
 <?php if ($page === 'login'): ?>
     <!-- Login Page -->
@@ -1337,7 +1442,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
             <form method="POST">
                 <div class="mb-4">
                     <label class="block text-gray-700 mb-2">Email</label>
-                    <input type="email" name="email" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="admin@rolodrawer.local">
+                    <input type="email" name="email" required class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div class="mb-6">
                     <label class="block text-gray-700 mb-2">Password</label>
@@ -1362,7 +1467,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
         <div id="mobileOverlay" class="hidden md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"></div>
 
         <!-- Sidebar -->
-        <div id="sidebar" class="w-64 bg-gray-800 text-white flex-shrink-0 fixed md:relative h-full z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300">
+        <div id="sidebar" class="w-64 bg-gray-800 text-white flex-shrink-0 fixed md:relative h-screen overflow-y-auto z-40 transform -translate-x-full md:translate-x-0 transition-transform duration-300">
             <div class="p-4">
                 <h1 class="text-2xl font-bold flex items-center gap-2">
                     <span class="text-3xl">🗂️</span>
@@ -1441,7 +1546,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 overflow-auto">
+        <div class="flex-1 overflow-y-auto">
             <div class="p-8">
                 <?php if ($message): ?>
                     <div class="mb-4 p-4 rounded <?= $messageType === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' ?>">
@@ -1532,6 +1637,10 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         'locations' => $db->fetchOne("SELECT COUNT(*) as count FROM locations")['count'],
                         'tags' => $db->fetchOne("SELECT COUNT(*) as count FROM tags")['count'],
                         'entities' => $db->fetchOne("SELECT COUNT(*) as count FROM entities")['count'],
+                        'expired' => $db->fetchOne("SELECT COUNT(*) as count FROM files WHERE expiration_date IS NOT NULL AND expiration_date < DATE('now') AND is_archived = 0 AND is_destroyed = 0")['count'],
+                        'expiring_30' => $db->fetchOne("SELECT COUNT(*) as count FROM files WHERE expiration_date IS NOT NULL AND expiration_date >= DATE('now') AND expiration_date <= DATE('now', '+30 days') AND is_archived = 0 AND is_destroyed = 0")['count'],
+                        'expiring_60' => $db->fetchOne("SELECT COUNT(*) as count FROM files WHERE expiration_date IS NOT NULL AND expiration_date > DATE('now', '+30 days') AND expiration_date <= DATE('now', '+60 days') AND is_archived = 0 AND is_destroyed = 0")['count'],
+                        'expiring_90' => $db->fetchOne("SELECT COUNT(*) as count FROM files WHERE expiration_date IS NOT NULL AND expiration_date > DATE('now', '+60 days') AND expiration_date <= DATE('now', '+90 days') AND is_archived = 0 AND is_destroyed = 0")['count'],
                     ];
 
                     $recentCheckouts = $db->fetchAll("SELECT f.*, u.name as checked_out_to FROM files f LEFT JOIN users u ON f.checked_out_by = u.id WHERE f.is_checked_out = 1 ORDER BY f.checked_out_at DESC LIMIT 5");
@@ -1658,6 +1767,68 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             </div>
                         </div>
                     </div>
+
+                    <!-- Expiration Alerts -->
+                    <?php if ($stats['expired'] > 0 || $stats['expiring_30'] > 0 || $stats['expiring_60'] > 0): ?>
+                        <div class="bg-white rounded-lg shadow p-6 mb-8 border-l-4 border-orange-500">
+                            <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+                                <span class="text-2xl">⏰</span> Expiration Alerts
+                            </h3>
+                            <div class="grid grid-cols-4 gap-4">
+                                <?php if ($stats['expired'] > 0): ?>
+                                    <div class="bg-red-50 p-4 rounded-lg border-2 border-red-300">
+                                        <div class="flex items-center gap-3 mb-2">
+                                            <div class="text-3xl">🔴</div>
+                                            <div>
+                                                <div class="text-2xl font-bold text-red-700"><?= $stats['expired'] ?></div>
+                                                <div class="text-sm text-red-600">Expired Files</div>
+                                            </div>
+                                        </div>
+                                        <a href="?page=reports&report=expired" class="text-xs text-red-700 hover:underline">View expired files →</a>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($stats['expiring_30'] > 0): ?>
+                                    <div class="bg-orange-50 p-4 rounded-lg border-2 border-orange-300">
+                                        <div class="flex items-center gap-3 mb-2">
+                                            <div class="text-3xl">🟠</div>
+                                            <div>
+                                                <div class="text-2xl font-bold text-orange-700"><?= $stats['expiring_30'] ?></div>
+                                                <div class="text-sm text-orange-600">Expiring in 30 days</div>
+                                            </div>
+                                        </div>
+                                        <a href="?page=reports&report=expiring&days=30" class="text-xs text-orange-700 hover:underline">View details →</a>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($stats['expiring_60'] > 0): ?>
+                                    <div class="bg-yellow-50 p-4 rounded-lg border-2 border-yellow-300">
+                                        <div class="flex items-center gap-3 mb-2">
+                                            <div class="text-3xl">🟡</div>
+                                            <div>
+                                                <div class="text-2xl font-bold text-yellow-700"><?= $stats['expiring_60'] ?></div>
+                                                <div class="text-sm text-yellow-600">Expiring in 60 days</div>
+                                            </div>
+                                        </div>
+                                        <a href="?page=reports&report=expiring&days=60" class="text-xs text-yellow-700 hover:underline">View details →</a>
+                                    </div>
+                                <?php endif; ?>
+
+                                <?php if ($stats['expiring_90'] > 0): ?>
+                                    <div class="bg-blue-50 p-4 rounded-lg border-2 border-blue-300">
+                                        <div class="flex items-center gap-3 mb-2">
+                                            <div class="text-3xl">🔵</div>
+                                            <div>
+                                                <div class="text-2xl font-bold text-blue-700"><?= $stats['expiring_90'] ?></div>
+                                                <div class="text-sm text-blue-600">Expiring in 90 days</div>
+                                            </div>
+                                        </div>
+                                        <a href="?page=reports&report=expiring&days=90" class="text-xs text-blue-700 hover:underline">View details →</a>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
 
                     <!-- Quick Actions -->
                     <div class="bg-white rounded-lg shadow p-6 mb-8">
@@ -2850,6 +3021,13 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                 </select>
                             </div>
                             <div class="mb-4">
+                                <label class="block text-gray-700 mb-2">Expiration Date (optional)</label>
+                                <input type="date" name="expiration_date"
+                                       class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                       min="<?= date('Y-m-d') ?>">
+                                <p class="text-sm text-gray-500 mt-1">When this file should expire (leave blank if not applicable)</p>
+                            </div>
+                            <div class="mb-4">
                                 <label class="block text-gray-700 mb-2">Entity (optional)</label>
                                 <select name="entity_id" class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <option value="">Unspecified</option>
@@ -3149,6 +3327,23 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                                 <span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Available</span>
                                             <?php endif; ?>
                                         </div>
+                                        <?php if ($file['expiration_date']): ?>
+                                            <div>
+                                                <span class="text-gray-600">Expiration:</span>
+                                                <span class="font-medium"><?= date('M j, Y', strtotime($file['expiration_date'])) ?></span>
+                                                <?php $expStatus = getExpirationStatus($file['expiration_date']); ?>
+                                                <?php if ($expStatus): ?>
+                                                    <span class="px-2 py-1 text-xs <?= $expStatus['class'] ?> rounded ml-2">
+                                                        <?= $expStatus['label'] ?>
+                                                        <?php if ($expStatus['status'] === 'expired'): ?>
+                                                            (<?= $expStatus['days'] ?> days ago)
+                                                        <?php elseif ($expStatus['status'] !== 'valid'): ?>
+                                                            (<?= $expStatus['days'] ?> days)
+                                                        <?php endif; ?>
+                                                    </span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
 
                                     <div class="border-t pt-4">
@@ -4259,6 +4454,14 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                         <option value="confidential" <?= $file['sensitivity'] === 'confidential' ? 'selected' : '' ?>>🟠 Confidential</option>
                                         <option value="restricted" <?= $file['sensitivity'] === 'restricted' ? 'selected' : '' ?>>🔴 Restricted</option>
                                     </select>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-gray-700 mb-2">Expiration Date (optional)</label>
+                                    <input type="date" name="expiration_date"
+                                           value="<?= htmlspecialchars($file['expiration_date'] ?? '') ?>"
+                                           class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                           min="<?= date('Y-m-d') ?>">
+                                    <p class="text-sm text-gray-500 mt-1">When this file should expire (leave blank if not applicable)</p>
                                 </div>
                                 <div class="mb-4">
                                     <label class="block text-gray-700 mb-2">Entity</label>
@@ -6050,7 +6253,7 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                         <div class="flex justify-between items-center mb-6">
                             <h2 class="text-3xl font-bold">Reports Dashboard</h2>
                         </div>
-                        <div class="grid grid-cols-3 gap-6">
+                        <div class="grid grid-cols-4 gap-6">
                             <div class="bg-white rounded-lg shadow p-6">
                                 <h3 class="text-xl font-bold mb-4 text-blue-600">Inventory Reports</h3>
                                 <div class="space-y-2">
@@ -6082,6 +6285,56 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                                     <a href="?page=reports&report=user_activity" class="block p-3 bg-gray-50 hover:bg-green-50 rounded">
                                         <div class="font-medium">User Activity <?php if ($_SESSION['user_role'] !== 'admin') echo '<span class="text-xs text-gray-500">(Admin)</span>'; ?></div>
                                         <div class="text-sm text-gray-600">Per-user statistics and actions</div>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <h3 class="text-xl font-bold mb-4 text-orange-600">Expiration Reports</h3>
+                                <div class="space-y-2">
+                                    <a href="?page=reports&report=expired" class="block p-3 bg-gray-50 hover:bg-orange-50 rounded">
+                                        <div class="font-medium">Expired Files</div>
+                                        <div class="text-sm text-gray-600">Files past their expiration date</div>
+                                    </a>
+                                    <a href="?page=reports&report=expiring&days=30" class="block p-3 bg-gray-50 hover:bg-orange-50 rounded">
+                                        <div class="font-medium">Expiring in 30 Days</div>
+                                        <div class="text-sm text-gray-600">Files expiring within the next month</div>
+                                    </a>
+                                    <a href="?page=reports&report=expiring&days=60" class="block p-3 bg-gray-50 hover:bg-orange-50 rounded">
+                                        <div class="font-medium">Expiring in 60 Days</div>
+                                        <div class="text-sm text-gray-600">Files expiring within 2 months</div>
+                                    </a>
+                                    <a href="?page=reports&report=expiring&days=90" class="block p-3 bg-gray-50 hover:bg-orange-50 rounded">
+                                        <div class="font-medium">Expiring in 90 Days</div>
+                                        <div class="text-sm text-gray-600">Files expiring within 3 months</div>
+                                    </a>
+                                    <a href="?page=reports&report=expired_unhandled&days=30" class="block p-3 bg-gray-50 hover:bg-orange-50 rounded border-l-4 border-red-500">
+                                        <div class="font-medium">Expired Unhandled (30+ Days)</div>
+                                        <div class="text-sm text-gray-600">Files expired 30+ days without action</div>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded-lg shadow p-6">
+                                <h3 class="text-xl font-bold mb-4 text-teal-600">Organization Reports</h3>
+                                <div class="space-y-2">
+                                    <a href="?page=reports&report=by_owner" class="block p-3 bg-gray-50 hover:bg-teal-50 rounded">
+                                        <div class="font-medium">Files by Owner</div>
+                                        <div class="text-sm text-gray-600">Files grouped by owner/user</div>
+                                    </a>
+                                    <a href="?page=reports&report=by_sensitivity" class="block p-3 bg-gray-50 hover:bg-teal-50 rounded">
+                                        <div class="font-medium">Files by Sensitivity</div>
+                                        <div class="text-sm text-gray-600">Grouped by security classification</div>
+                                    </a>
+                                    <a href="?page=reports&report=unassigned" class="block p-3 bg-gray-50 hover:bg-teal-50 rounded">
+                                        <div class="font-medium">Unassigned Files</div>
+                                        <div class="text-sm text-gray-600">Files missing location or entity</div>
+                                    </a>
+                                    <a href="?page=reports&report=checkout_history" class="block p-3 bg-gray-50 hover:bg-teal-50 rounded">
+                                        <div class="font-medium">Checkout History</div>
+                                        <div class="text-sm text-gray-600">Complete checkout and return history</div>
+                                    </a>
+                                    <a href="?page=reports&report=movement_history" class="block p-3 bg-gray-50 hover:bg-teal-50 rounded">
+                                        <div class="font-medium">Movement History</div>
+                                        <div class="text-sm text-gray-600">File location change tracking</div>
                                     </a>
                                 </div>
                             </div>
@@ -6316,6 +6569,141 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             <?php endif; ?>
                         </div>
 
+                    <?php elseif ($report === 'expired'): ?>
+                        <?php
+                        $expiredFiles = $db->fetchAll("
+                            SELECT f.*, u.name as owner_name, u.email as owner_email
+                            FROM files f
+                            LEFT JOIN users u ON f.owner_id = u.id
+                            WHERE f.expiration_date IS NOT NULL
+                            AND f.expiration_date < DATE('now')
+                            AND f.is_archived = 0
+                            AND f.is_destroyed = 0
+                            ORDER BY f.expiration_date
+                        ");
+                        ?>
+                        <div class="flex justify-between items-center mb-6">
+                            <div><a href="?page=reports" class="text-blue-600 hover:underline">← Back to Reports</a><h2 class="text-3xl font-bold mt-2">Expired Files Report</h2></div>
+                            <div class="flex gap-2 no-print"><a href="?page=reports&report=expired&format=csv" class="bg-green-600 text-white px-4 py-2 rounded">Export CSV</a><button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded">Print</button></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="stat-card border-2 border-red-500"><div class="text-2xl font-bold text-red-600"><?= count($expiredFiles) ?></div><div class="text-gray-600">Expired Files</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-orange-600"><?= !empty($expiredFiles) ? max(array_map(fn($f) => daysSinceExpiration($f['expiration_date']), $expiredFiles)) : 0 ?></div><div class="text-gray-600">Max Days Expired</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-yellow-600"><?= !empty($expiredFiles) ? number_format(array_sum(array_map(fn($f) => daysSinceExpiration($f['expiration_date']), $expiredFiles)) / count($expiredFiles), 1) : 0 ?></div><div class="text-gray-600">Avg Days Expired</div></div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-xl font-bold mb-4">Expired Files (Sorted by Most Overdue)</h3>
+                            <?php if (!empty($expiredFiles)): usort($expiredFiles, fn($a, $b) => daysSinceExpiration($b['expiration_date']) - daysSinceExpiration($a['expiration_date'])); ?>
+                                <table class="report-table">
+                                    <thead><tr><th>File #</th><th>Name</th><th>Owner</th><th>Contact</th><th>Expiration Date</th><th>Days Expired</th><th class="no-print">Actions</th></tr></thead>
+                                    <tbody>
+                                        <?php foreach($expiredFiles as $f): $daysExp = daysSinceExpiration($f['expiration_date']); $sev = $daysExp > 90 ? 'bg-red-100' : ($daysExp > 60 ? 'bg-orange-100' : ($daysExp > 30 ? 'bg-yellow-100' : 'bg-yellow-50')); ?>
+                                            <tr class="<?= $sev ?>">
+                                                <td><a href="?page=files&action=view&id=<?= $f['id'] ?>" class="text-blue-600 hover:underline"><?= htmlspecialchars($f['display_number']) ?></a></td>
+                                                <td><?= htmlspecialchars($f['name']) ?></td>
+                                                <td><?= htmlspecialchars($f['owner_name']) ?></td>
+                                                <td><a href="mailto:<?= htmlspecialchars($f['owner_email']) ?>" class="text-blue-600 hover:underline"><?= htmlspecialchars($f['owner_email']) ?></a></td>
+                                                <td><?= date('M d, Y', strtotime($f['expiration_date'])) ?></td>
+                                                <td><span class="px-2 py-1 text-xs rounded bg-red-100 text-red-800 font-bold"><?= $daysExp ?> days</span></td>
+                                                <td class="no-print">
+                                                    <a href="?page=files&action=edit&id=<?= $f['id'] ?>" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">Edit</a>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            <?php else: ?>
+                                <div class="text-center py-8"><div class="text-green-600 text-xl font-bold mb-2">No Expired Files!</div><div class="text-gray-600">All files with expiration dates are still valid.</div></div>
+                            <?php endif; ?>
+                        </div>
+
+                    <?php elseif ($report === 'expiring'): ?>
+                        <?php
+                        $days = isset($_GET['days']) ? (int)$_GET['days'] : 30;
+                        $daysLabel = $days . ' days';
+
+                        if ($days == 30) {
+                            $expiringFiles = $db->fetchAll("
+                                SELECT f.*, u.name as owner_name, u.email as owner_email
+                                FROM files f
+                                LEFT JOIN users u ON f.owner_id = u.id
+                                WHERE f.expiration_date IS NOT NULL
+                                AND f.expiration_date >= DATE('now')
+                                AND f.expiration_date <= DATE('now', '+30 days')
+                                AND f.is_archived = 0
+                                AND f.is_destroyed = 0
+                                ORDER BY f.expiration_date
+                            ");
+                        } elseif ($days == 60) {
+                            $expiringFiles = $db->fetchAll("
+                                SELECT f.*, u.name as owner_name, u.email as owner_email
+                                FROM files f
+                                LEFT JOIN users u ON f.owner_id = u.id
+                                WHERE f.expiration_date IS NOT NULL
+                                AND f.expiration_date > DATE('now', '+30 days')
+                                AND f.expiration_date <= DATE('now', '+60 days')
+                                AND f.is_archived = 0
+                                AND f.is_destroyed = 0
+                                ORDER BY f.expiration_date
+                            ");
+                        } else {
+                            $expiringFiles = $db->fetchAll("
+                                SELECT f.*, u.name as owner_name, u.email as owner_email
+                                FROM files f
+                                LEFT JOIN users u ON f.owner_id = u.id
+                                WHERE f.expiration_date IS NOT NULL
+                                AND f.expiration_date > DATE('now', '+60 days')
+                                AND f.expiration_date <= DATE('now', '+90 days')
+                                AND f.is_archived = 0
+                                AND f.is_destroyed = 0
+                                ORDER BY f.expiration_date
+                            ");
+                        }
+                        ?>
+                        <div class="flex justify-between items-center mb-6">
+                            <div><a href="?page=reports" class="text-blue-600 hover:underline">← Back to Reports</a><h2 class="text-3xl font-bold mt-2">Files Expiring in <?= $daysLabel ?></h2></div>
+                            <div class="flex gap-2 no-print"><a href="?page=reports&report=expiring&days=<?= $days ?>&format=csv" class="bg-green-600 text-white px-4 py-2 rounded">Export CSV</a><button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded">Print</button></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="stat-card border-2 border-orange-500"><div class="text-2xl font-bold text-orange-600"><?= count($expiringFiles) ?></div><div class="text-gray-600">Files Expiring</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-blue-600"><?= $days ?></div><div class="text-gray-600">Day Window</div></div>
+                            <div class="stat-card">
+                                <div class="flex gap-2 justify-center">
+                                    <a href="?page=reports&report=expiring&days=30" class="px-3 py-1 rounded text-sm <?= $days == 30 ? 'bg-orange-600 text-white' : 'bg-gray-200' ?>">30 Days</a>
+                                    <a href="?page=reports&report=expiring&days=60" class="px-3 py-1 rounded text-sm <?= $days == 60 ? 'bg-yellow-600 text-white' : 'bg-gray-200' ?>">60 Days</a>
+                                    <a href="?page=reports&report=expiring&days=90" class="px-3 py-1 rounded text-sm <?= $days == 90 ? 'bg-blue-600 text-white' : 'bg-gray-200' ?>">90 Days</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-xl font-bold mb-4">Expiring Files (Sorted by Soonest)</h3>
+                            <?php if (!empty($expiringFiles)): ?>
+                                <table class="report-table">
+                                    <thead><tr><th>File #</th><th>Name</th><th>Owner</th><th>Contact</th><th>Expiration Date</th><th>Days Until Expiration</th><th class="no-print">Actions</th></tr></thead>
+                                    <tbody>
+                                        <?php foreach($expiringFiles as $f):
+                                            $daysUntil = daysUntilExpiration($f['expiration_date']);
+                                            $sev = $daysUntil <= 7 ? 'bg-red-50' : ($daysUntil <= 14 ? 'bg-orange-50' : 'bg-yellow-50');
+                                        ?>
+                                            <tr class="<?= $sev ?>">
+                                                <td><a href="?page=files&action=view&id=<?= $f['id'] ?>" class="text-blue-600 hover:underline"><?= htmlspecialchars($f['display_number']) ?></a></td>
+                                                <td><?= htmlspecialchars($f['name']) ?></td>
+                                                <td><?= htmlspecialchars($f['owner_name']) ?></td>
+                                                <td><a href="mailto:<?= htmlspecialchars($f['owner_email']) ?>" class="text-blue-600 hover:underline"><?= htmlspecialchars($f['owner_email']) ?></a></td>
+                                                <td><?= date('M d, Y', strtotime($f['expiration_date'])) ?></td>
+                                                <td><span class="px-2 py-1 text-xs rounded <?= $daysUntil <= 7 ? 'bg-red-100 text-red-800' : ($daysUntil <= 14 ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800') ?> font-bold"><?= $daysUntil ?> days</span></td>
+                                                <td class="no-print">
+                                                    <a href="?page=files&action=edit&id=<?= $f['id'] ?>" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">Edit</a>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            <?php else: ?>
+                                <div class="text-center py-8"><div class="text-green-600 text-xl font-bold mb-2">No Files Expiring in This Window!</div><div class="text-gray-600">No files are expiring in the next <?= $daysLabel ?>.</div></div>
+                            <?php endif; ?>
+                        </div>
+
                     <?php elseif ($report === 'user_activity'): ?>
                         <?php if ($_SESSION['user_role'] !== 'admin'): ?>
                             <div class="bg-red-100 text-red-700 p-4 rounded">This report is only available to administrators.</div>
@@ -6366,6 +6754,379 @@ if ($page === 'labels' && $action === 'print' && !empty($_GET['file_ids'])) {
                             </table>
                         </div>
                         <?php endif; ?>
+
+                    <?php elseif ($report === 'expired_unhandled'): ?>
+                        <?php
+                        $days = isset($_GET['days']) ? (int)$_GET['days'] : 30;
+                        $daysLabel = $days . ' days';
+
+                        if ($days == 30) {
+                            $unhandledFiles = $db->fetchAll("
+                                SELECT f.*, u.name as owner_name, u.email as owner_email
+                                FROM files f
+                                LEFT JOIN users u ON f.owner_id = u.id
+                                WHERE f.expiration_date IS NOT NULL
+                                AND f.expiration_date < DATE('now', '-30 days')
+                                AND f.is_archived = 0
+                                AND f.is_destroyed = 0
+                                ORDER BY f.expiration_date
+                            ");
+                        } elseif ($days == 60) {
+                            $unhandledFiles = $db->fetchAll("
+                                SELECT f.*, u.name as owner_name, u.email as owner_email
+                                FROM files f
+                                LEFT JOIN users u ON f.owner_id = u.id
+                                WHERE f.expiration_date IS NOT NULL
+                                AND f.expiration_date < DATE('now', '-60 days')
+                                AND f.is_archived = 0
+                                AND f.is_destroyed = 0
+                                ORDER BY f.expiration_date
+                            ");
+                        } else {
+                            $unhandledFiles = $db->fetchAll("
+                                SELECT f.*, u.name as owner_name, u.email as owner_email
+                                FROM files f
+                                LEFT JOIN users u ON f.owner_id = u.id
+                                WHERE f.expiration_date IS NOT NULL
+                                AND f.expiration_date < DATE('now', '-90 days')
+                                AND f.is_archived = 0
+                                AND f.is_destroyed = 0
+                                ORDER BY f.expiration_date
+                            ");
+                        }
+                        ?>
+                        <div class="flex justify-between items-center mb-6">
+                            <div><a href="?page=reports" class="text-blue-600 hover:underline">← Back to Reports</a><h2 class="text-3xl font-bold mt-2">Expired Unhandled Files (<?= $daysLabel ?>+ Overdue)</h2></div>
+                            <div class="flex gap-2 no-print"><a href="?page=reports&report=expired_unhandled&days=<?= $days ?>&format=csv" class="bg-green-600 text-white px-4 py-2 rounded">Export CSV</a><button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded">Print</button></div>
+                        </div>
+                        <div class="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-6">
+                            <h3 class="text-lg font-bold text-red-800 mb-2">⚠️ Compliance Alert</h3>
+                            <p class="text-red-700">These files expired more than <?= $daysLabel ?> ago and have NOT been archived or destroyed. Action may be required for compliance.</p>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="stat-card border-2 border-red-500"><div class="text-2xl font-bold text-red-600"><?= count($unhandledFiles) ?></div><div class="text-gray-600">Unhandled Files</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-orange-600"><?= $days ?></div><div class="text-gray-600">Days Threshold</div></div>
+                            <div class="stat-card">
+                                <div class="flex gap-2 justify-center">
+                                    <a href="?page=reports&report=expired_unhandled&days=30" class="px-3 py-1 rounded text-sm <?= $days == 30 ? 'bg-red-600 text-white' : 'bg-gray-200' ?>">30+ Days</a>
+                                    <a href="?page=reports&report=expired_unhandled&days=60" class="px-3 py-1 rounded text-sm <?= $days == 60 ? 'bg-red-600 text-white' : 'bg-gray-200' ?>">60+ Days</a>
+                                    <a href="?page=reports&report=expired_unhandled&days=90" class="px-3 py-1 rounded text-sm <?= $days == 90 ? 'bg-red-600 text-white' : 'bg-gray-200' ?>">90+ Days</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-xl font-bold mb-4">Unhandled Files Requiring Action</h3>
+                            <?php if (!empty($unhandledFiles)): ?>
+                                <table class="report-table">
+                                    <thead><tr><th>File #</th><th>Name</th><th>Owner</th><th>Expiration Date</th><th>Days Since Expiration</th><th class="no-print">Actions</th></tr></thead>
+                                    <tbody>
+                                        <?php foreach($unhandledFiles as $f): $daysExp = daysSinceExpiration($f['expiration_date']); ?>
+                                            <tr class="bg-red-50">
+                                                <td><a href="?page=files&action=view&id=<?= $f['id'] ?>" class="text-blue-600 hover:underline"><?= htmlspecialchars($f['display_number']) ?></a></td>
+                                                <td><?= htmlspecialchars($f['name']) ?></td>
+                                                <td><?= htmlspecialchars($f['owner_name']) ?></td>
+                                                <td><?= date('M d, Y', strtotime($f['expiration_date'])) ?></td>
+                                                <td><span class="px-2 py-1 text-xs rounded bg-red-100 text-red-800 font-bold"><?= $daysExp ?> days</span></td>
+                                                <td class="no-print">
+                                                    <a href="?page=files&action=view&id=<?= $f['id'] ?>" class="bg-yellow-600 text-white px-3 py-1 rounded text-xs hover:bg-yellow-700 mr-1">Archive</a>
+                                                    <a href="?page=files&action=edit&id=<?= $f['id'] ?>" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">Edit</a>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            <?php else: ?>
+                                <div class="text-center py-8"><div class="text-green-600 text-xl font-bold mb-2">All Clear!</div><div class="text-gray-600">No files have been expired for <?= $daysLabel ?>+ without being handled.</div></div>
+                            <?php endif; ?>
+                        </div>
+
+                    <?php elseif ($report === 'by_owner'): ?>
+                        <?php
+                        $files = $db->fetchAll("
+                            SELECT f.*, u.name as owner_name, u.email as owner_email, c.label as cabinet_label, l.name as location_name
+                            FROM files f
+                            LEFT JOIN users u ON f.owner_id = u.id
+                            LEFT JOIN cabinets c ON f.current_cabinet_id = c.id
+                            LEFT JOIN locations l ON c.location_id = l.id
+                            WHERE f.is_destroyed = 0
+                            ORDER BY u.name, f.display_number
+                        ");
+                        $byOwner = [];
+                        foreach($files as $f) {
+                            $ownerName = $f['owner_name'] ?: 'Unknown Owner';
+                            if (!isset($byOwner[$ownerName])) $byOwner[$ownerName] = [];
+                            $byOwner[$ownerName][] = $f;
+                        }
+                        ?>
+                        <div class="flex justify-between items-center mb-6">
+                            <div><a href="?page=reports" class="text-blue-600 hover:underline">← Back to Reports</a><h2 class="text-3xl font-bold mt-2">Files by Owner</h2></div>
+                            <div class="flex gap-2 no-print"><a href="?page=reports&report=by_owner&format=csv" class="bg-green-600 text-white px-4 py-2 rounded">Export CSV</a><button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded">Print</button></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="stat-card"><div class="text-2xl font-bold text-blue-600"><?= count($byOwner) ?></div><div class="text-gray-600">File Owners</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-green-600"><?= count($files) ?></div><div class="text-gray-600">Total Files</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-purple-600"><?= !empty($files) ? number_format(count($files) / count($byOwner), 1) : 0 ?></div><div class="text-gray-600">Avg per Owner</div></div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <?php foreach($byOwner as $owner => $ownerFiles): ?>
+                                <div class="mb-6 border-b pb-4">
+                                    <h4 class="text-lg font-semibold text-blue-600 mb-3"><?= htmlspecialchars($owner) ?> (<?= count($ownerFiles) ?> files)</h4>
+                                    <table class="report-table">
+                                        <thead><tr><th>File #</th><th>Name</th><th>Location</th><th>Cabinet</th><th>Status</th></tr></thead>
+                                        <tbody>
+                                            <?php foreach($ownerFiles as $f): ?>
+                                                <tr>
+                                                    <td><a href="?page=files&action=view&id=<?= $f['id'] ?>" class="text-blue-600 hover:underline"><?= htmlspecialchars($f['display_number']) ?></a></td>
+                                                    <td><?= htmlspecialchars($f['name']) ?></td>
+                                                    <td><?= htmlspecialchars($f['location_name'] ?: 'N/A') ?></td>
+                                                    <td><?= htmlspecialchars($f['cabinet_label'] ?: 'N/A') ?></td>
+                                                    <td>
+                                                        <?php if ($f['is_archived']): ?><span class="px-2 py-1 text-xs rounded bg-yellow-100 text-yellow-800">Archived</span>
+                                                        <?php elseif ($f['is_checked_out']): ?><span class="px-2 py-1 text-xs rounded bg-orange-100 text-orange-800">Checked Out</span>
+                                                        <?php else: ?><span class="px-2 py-1 text-xs rounded bg-green-100 text-green-800">Available</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+
+                    <?php elseif ($report === 'by_sensitivity'): ?>
+                        <?php
+                        $files = $db->fetchAll("
+                            SELECT f.*, u.name as owner_name, c.label as cabinet_label, l.name as location_name
+                            FROM files f
+                            LEFT JOIN users u ON f.owner_id = u.id
+                            LEFT JOIN cabinets c ON f.current_cabinet_id = c.id
+                            LEFT JOIN locations l ON c.location_id = l.id
+                            WHERE f.is_destroyed = 0
+                            ORDER BY
+                                CASE f.sensitivity
+                                    WHEN 'restricted' THEN 1
+                                    WHEN 'confidential' THEN 2
+                                    WHEN 'internal' THEN 3
+                                    WHEN 'public' THEN 4
+                                END,
+                                f.display_number
+                        ");
+                        $bySensitivity = ['restricted' => [], 'confidential' => [], 'internal' => [], 'public' => []];
+                        foreach($files as $f) {
+                            $bySensitivity[$f['sensitivity']][] = $f;
+                        }
+                        ?>
+                        <div class="flex justify-between items-center mb-6">
+                            <div><a href="?page=reports" class="text-blue-600 hover:underline">← Back to Reports</a><h2 class="text-3xl font-bold mt-2">Files by Sensitivity Level</h2></div>
+                            <div class="flex gap-2 no-print"><a href="?page=reports&report=by_sensitivity&format=csv" class="bg-green-600 text-white px-4 py-2 rounded">Export CSV</a><button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded">Print</button></div>
+                        </div>
+                        <div class="grid grid-cols-4 gap-4 mb-6">
+                            <div class="stat-card border-l-4 border-red-500"><div class="text-2xl font-bold text-red-600"><?= count($bySensitivity['restricted']) ?></div><div class="text-gray-600">🔴 Restricted</div></div>
+                            <div class="stat-card border-l-4 border-orange-500"><div class="text-2xl font-bold text-orange-600"><?= count($bySensitivity['confidential']) ?></div><div class="text-gray-600">🟠 Confidential</div></div>
+                            <div class="stat-card border-l-4 border-yellow-500"><div class="text-2xl font-bold text-yellow-600"><?= count($bySensitivity['internal']) ?></div><div class="text-gray-600">🟡 Internal</div></div>
+                            <div class="stat-card border-l-4 border-green-500"><div class="text-2xl font-bold text-green-600"><?= count($bySensitivity['public']) ?></div><div class="text-gray-600">🟢 Public</div></div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <?php foreach(['restricted', 'confidential', 'internal', 'public'] as $level):
+                                $levelFiles = $bySensitivity[$level];
+                                if (empty($levelFiles)) continue;
+                                $emoji = ['restricted' => '🔴', 'confidential' => '🟠', 'internal' => '🟡', 'public' => '🟢'][$level];
+                            ?>
+                                <div class="mb-6 border-b pb-4">
+                                    <h4 class="text-lg font-semibold mb-3"><?= $emoji ?> <?= ucfirst($level) ?> (<?= count($levelFiles) ?> files)</h4>
+                                    <table class="report-table">
+                                        <thead><tr><th>File #</th><th>Name</th><th>Owner</th><th>Location</th><th>Cabinet</th></tr></thead>
+                                        <tbody>
+                                            <?php foreach($levelFiles as $f): ?>
+                                                <tr>
+                                                    <td><a href="?page=files&action=view&id=<?= $f['id'] ?>" class="text-blue-600 hover:underline"><?= htmlspecialchars($f['display_number']) ?></a></td>
+                                                    <td><?= htmlspecialchars($f['name']) ?></td>
+                                                    <td><?= htmlspecialchars($f['owner_name']) ?></td>
+                                                    <td><?= htmlspecialchars($f['location_name'] ?: 'N/A') ?></td>
+                                                    <td><?= htmlspecialchars($f['cabinet_label'] ?: 'N/A') ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+
+                    <?php elseif ($report === 'checkout_history'): ?>
+                        <?php
+                        $checkoutHistory = $db->fetchAll("
+                            SELECT fc.*, f.display_number, f.name as file_name, u.name as user_name, u.email as user_email
+                            FROM file_checkouts fc
+                            JOIN files f ON fc.file_id = f.id
+                            LEFT JOIN users u ON fc.user_id = u.id
+                            ORDER BY fc.checked_out_at DESC
+                            LIMIT 500
+                        ");
+                        ?>
+                        <div class="flex justify-between items-center mb-6">
+                            <div><a href="?page=reports" class="text-blue-600 hover:underline">← Back to Reports</a><h2 class="text-3xl font-bold mt-2">Checkout History</h2></div>
+                            <div class="flex gap-2 no-print"><a href="?page=reports&report=checkout_history&format=csv" class="bg-green-600 text-white px-4 py-2 rounded">Export CSV</a><button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded">Print</button></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="stat-card"><div class="text-2xl font-bold text-blue-600"><?= count($checkoutHistory) ?></div><div class="text-gray-600">Total Checkouts (Recent 500)</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-green-600"><?= count(array_filter($checkoutHistory, fn($c) => $c['returned_at'])) ?></div><div class="text-gray-600">Returned</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-orange-600"><?= count(array_filter($checkoutHistory, fn($c) => !$c['returned_at'])) ?></div><div class="text-gray-600">Still Out</div></div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-xl font-bold mb-4">All Checkouts</h3>
+                            <?php if (!empty($checkoutHistory)): ?>
+                                <table class="report-table">
+                                    <thead><tr><th>File #</th><th>File Name</th><th>Checked Out By</th><th>Checked Out</th><th>Expected Return</th><th>Returned</th><th>Duration</th></tr></thead>
+                                    <tbody>
+                                        <?php foreach($checkoutHistory as $c):
+                                            $wasOverdue = $c['returned_at'] && strtotime($c['returned_at']) > strtotime($c['expected_return_date']);
+                                            $isOverdueNow = !$c['returned_at'] && isOverdue($c['expected_return_date']);
+                                            $duration = '';
+                                            if ($c['returned_at']) {
+                                                $days = floor((strtotime($c['returned_at']) - strtotime($c['checked_out_at'])) / 86400);
+                                                $duration = $days . ' day' . ($days != 1 ? 's' : '');
+                                            }
+                                        ?>
+                                            <tr class="<?= ($wasOverdue || $isOverdueNow) ? 'bg-red-50' : '' ?>">
+                                                <td><a href="?page=files&action=view&id=<?= $c['file_id'] ?>" class="text-blue-600 hover:underline"><?= htmlspecialchars($c['display_number']) ?></a></td>
+                                                <td><?= htmlspecialchars($c['file_name']) ?></td>
+                                                <td><?= htmlspecialchars($c['user_name']) ?></td>
+                                                <td><?= date('M d, Y', strtotime($c['checked_out_at'])) ?></td>
+                                                <td><?= date('M d, Y', strtotime($c['expected_return_date'])) ?></td>
+                                                <td>
+                                                    <?php if ($c['returned_at']): ?>
+                                                        <?= date('M d, Y', strtotime($c['returned_at'])) ?>
+                                                        <?php if ($wasOverdue): ?><span class="ml-1 px-1 py-0.5 text-xs bg-red-200 text-red-800 rounded">Late</span><?php endif; ?>
+                                                    <?php else: ?>
+                                                        <span class="px-2 py-1 text-xs rounded <?= $isOverdueNow ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800' ?>">
+                                                            <?= $isOverdueNow ? 'OVERDUE' : 'Still Out' ?>
+                                                        </span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td><?= $duration ?: '-' ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            <?php else: ?>
+                                <div class="text-center py-8"><div class="text-gray-600">No checkout history available.</div></div>
+                            <?php endif; ?>
+                        </div>
+
+                    <?php elseif ($report === 'unassigned'): ?>
+                        <?php
+                        $unassignedFiles = $db->fetchAll("
+                            SELECT f.*, u.name as owner_name
+                            FROM files f
+                            LEFT JOIN users u ON f.owner_id = u.id
+                            WHERE (f.current_cabinet_id IS NULL OR f.entity_id IS NULL)
+                            AND f.is_archived = 0
+                            AND f.is_destroyed = 0
+                            ORDER BY f.display_number
+                        ");
+                        $noLocation = array_filter($unassignedFiles, fn($f) => !$f['current_cabinet_id']);
+                        $noEntity = array_filter($unassignedFiles, fn($f) => !$f['entity_id']);
+                        ?>
+                        <div class="flex justify-between items-center mb-6">
+                            <div><a href="?page=reports" class="text-blue-600 hover:underline">← Back to Reports</a><h2 class="text-3xl font-bold mt-2">Unassigned Files</h2></div>
+                            <div class="flex gap-2 no-print"><a href="?page=reports&report=unassigned&format=csv" class="bg-green-600 text-white px-4 py-2 rounded">Export CSV</a><button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded">Print</button></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="stat-card border-2 border-orange-500"><div class="text-2xl font-bold text-orange-600"><?= count($unassignedFiles) ?></div><div class="text-gray-600">Total Unassigned</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-red-600"><?= count($noLocation) ?></div><div class="text-gray-600">No Location</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-yellow-600"><?= count($noEntity) ?></div><div class="text-gray-600">No Entity</div></div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-xl font-bold mb-4">Files Missing Assignments</h3>
+                            <?php if (!empty($unassignedFiles)): ?>
+                                <table class="report-table">
+                                    <thead><tr><th>File #</th><th>Name</th><th>Owner</th><th>Missing</th><th class="no-print">Actions</th></tr></thead>
+                                    <tbody>
+                                        <?php foreach($unassignedFiles as $f):
+                                            $missing = [];
+                                            if (!$f['current_cabinet_id']) $missing[] = 'Location';
+                                            if (!$f['entity_id']) $missing[] = 'Entity';
+                                        ?>
+                                            <tr class="bg-yellow-50">
+                                                <td><a href="?page=files&action=view&id=<?= $f['id'] ?>" class="text-blue-600 hover:underline"><?= htmlspecialchars($f['display_number']) ?></a></td>
+                                                <td><?= htmlspecialchars($f['name']) ?></td>
+                                                <td><?= htmlspecialchars($f['owner_name']) ?></td>
+                                                <td><span class="px-2 py-1 text-xs rounded bg-orange-100 text-orange-800"><?= implode(', ', $missing) ?></span></td>
+                                                <td class="no-print">
+                                                    <a href="?page=files&action=edit&id=<?= $f['id'] ?>" class="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">Assign</a>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            <?php else: ?>
+                                <div class="text-center py-8"><div class="text-green-600 text-xl font-bold mb-2">All Files Assigned!</div><div class="text-gray-600">All files have both location and entity assigned.</div></div>
+                            <?php endif; ?>
+                        </div>
+
+                    <?php elseif ($report === 'movement_history'): ?>
+                        <?php
+                        $movements = $db->fetchAll("
+                            SELECT fm.*, f.display_number, f.name as file_name,
+                                   u.name as moved_by_name,
+                                   l_from.name as from_location, c_from.label as from_cabinet,
+                                   l_to.name as to_location, c_to.label as to_cabinet
+                            FROM file_movements fm
+                            LEFT JOIN files f ON fm.file_id = f.id
+                            LEFT JOIN users u ON fm.moved_by = u.id
+                            LEFT JOIN cabinets c_from ON fm.from_cabinet_id = c_from.id
+                            LEFT JOIN locations l_from ON c_from.location_id = l_from.id
+                            LEFT JOIN cabinets c_to ON fm.to_cabinet_id = c_to.id
+                            LEFT JOIN locations l_to ON c_to.location_id = l_to.id
+                            ORDER BY fm.moved_at DESC
+                            LIMIT 500
+                        ");
+                        ?>
+                        <div class="flex justify-between items-center mb-6">
+                            <div><a href="?page=reports" class="text-blue-600 hover:underline">← Back to Reports</a><h2 class="text-3xl font-bold mt-2">Movement History</h2></div>
+                            <div class="flex gap-2 no-print"><a href="?page=reports&report=movement_history&format=csv" class="bg-green-600 text-white px-4 py-2 rounded">Export CSV</a><button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded">Print</button></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="stat-card"><div class="text-2xl font-bold text-blue-600"><?= count($movements) ?></div><div class="text-gray-600">Total Movements (Recent 500)</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-green-600"><?= count(array_unique(array_column($movements, 'file_id'))) ?></div><div class="text-gray-600">Files Moved</div></div>
+                            <div class="stat-card"><div class="text-2xl font-bold text-purple-600"><?= count(array_unique(array_column($movements, 'moved_by'))) ?></div><div class="text-gray-600">Users Who Moved Files</div></div>
+                        </div>
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-xl font-bold mb-4">All File Movements</h3>
+                            <?php if (!empty($movements)): ?>
+                                <table class="report-table">
+                                    <thead><tr><th>Date</th><th>File #</th><th>File Name</th><th>From</th><th>To</th><th>Moved By</th><th>Notes</th></tr></thead>
+                                    <tbody>
+                                        <?php foreach($movements as $m): ?>
+                                            <tr>
+                                                <td><?= date('M d, Y', strtotime($m['moved_at'])) ?></td>
+                                                <td><a href="?page=files&action=view&id=<?= $m['file_id'] ?>" class="text-blue-600 hover:underline"><?= htmlspecialchars($m['display_number']) ?></a></td>
+                                                <td><?= htmlspecialchars($m['file_name']) ?></td>
+                                                <td>
+                                                    <?php if ($m['from_location']): ?>
+                                                        <?= htmlspecialchars($m['from_location']) ?> → <?= htmlspecialchars($m['from_cabinet']) ?>
+                                                    <?php else: ?>
+                                                        <span class="text-gray-400">N/A</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <?php if ($m['to_location']): ?>
+                                                        <?= htmlspecialchars($m['to_location']) ?> → <?= htmlspecialchars($m['to_cabinet']) ?>
+                                                    <?php else: ?>
+                                                        <span class="text-gray-400">Unassigned</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td><?= htmlspecialchars($m['moved_by_name']) ?></td>
+                                                <td><?= htmlspecialchars($m['notes'] ?: '-') ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            <?php else: ?>
+                                <div class="text-center py-8"><div class="text-gray-600">No movement history available.</div></div>
+                            <?php endif; ?>
+                        </div>
 
                     <?php elseif ($report === 'compliance'): ?>
                         <?php if ($_SESSION['user_role'] !== 'admin'): ?>
