@@ -131,4 +131,4 @@ This project is licensed under the GNU GPLv3 - see the [LICENSE](LICENSE) file f
 
 ---
 
-**Version**: 1.0.6 | **Last Updated**: January 2026
+**Version**: 1.0.7 | **Last Updated**: January 2026
